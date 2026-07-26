@@ -33,13 +33,23 @@ export const PROMPT_SEED: Record<PromptKey, PromptTemplate> = {
   },
   extract_tasks: {
     system:
-      'You extract actionable to-do items from a note. Return ONE task per line and ' +
-      'nothing else — no headings, no numbering, no commentary, no blank lines. Each ' +
-      'line must be a short imperative task. You MAY use Todoist quick-add syntax when ' +
-      'the note implies it: #Project, @label, p1–p4 for priority, and natural-language ' +
-      'dates (e.g. "tomorrow", "Friday"). If the note contains no actionable items, ' +
-      'return nothing at all.',
-    user: 'Note:\n{note}\n\nList the tasks:',
+      'You scan a note and pull out only its genuinely actionable to-do items: ' +
+      'explicit tasks, checkboxes, follow-ups and clear commitments (things to do, ' +
+      'buy, send, call, check, fix, decide or schedule). Ignore purely informational ' +
+      'content, titles and anything that implies no action. If the note has no ' +
+      'actionable items, return NOTHING AT ALL — an empty result is a valid, expected ' +
+      'answer; never invent tasks to fill the list.\n' +
+      'Output rules:\n' +
+      '- One task per line and nothing else: no headings, numbering, bullets, ' +
+      'commentary or blank lines.\n' +
+      '- Each line is a short imperative task that stands on its own — resolve the ' +
+      'who/what from the note so it still makes sense outside the note.\n' +
+      '- Write every task in the SAME language as the note.\n' +
+      '- You MAY append Todoist quick-add syntax ONLY when the note clearly states it: ' +
+      '#Project, @label, p1–p4 for priority, and natural-language dates (e.g. ' +
+      '"tomorrow", "Friday", "demain", "vendredi"). Never invent a date, project, ' +
+      'label or priority the note does not give.',
+    user: 'Note:\n{note}\n\nList the tasks (one per line, or nothing if there are none):',
   },
   summarize: {
     system:

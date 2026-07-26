@@ -31,6 +31,19 @@ describe('parseQuickAdd', () => {
     expect(r.title).toBe('Water plants');
   });
 
+  it('extracts a French recurrence phrase', () => {
+    const lundis = parseQuickAdd('Réunion équipe tous les lundis', NOW);
+    expect(lundis.recurrence).toBe('every monday');
+    expect(lundis.title).toBe('Réunion équipe');
+
+    const jours = parseQuickAdd('Arroser les plantes tous les 3 jours', NOW);
+    expect(jours.recurrence).toBe('every 3 days');
+    expect(jours.title).toBe('Arroser les plantes');
+
+    expect(parseQuickAdd('Faire le ménage chaque semaine', NOW).recurrence).toBe('every week');
+    expect(parseQuickAdd('Payer le loyer tous les 1', NOW).recurrence).toBe('every 1st');
+  });
+
   it('parses a relative date and strips it from the title', () => {
     const r = parseQuickAdd('Call dentist tomorrow', NOW);
     expect(r.title).toBe('Call dentist');

@@ -7,18 +7,18 @@ Postgres database. Backing up the database backs up everything.
 
 ## What is stored where
 
-| Data | Table(s) | Notes |
-| --- | --- | --- |
-| Tasks | `tasks` | Title, description, dates, status, priority, recurrence, hierarchy. |
-| Task ↔ label links | `task_labels` | Join table. |
-| Projects / sections / labels / filters | `projects`, `sections`, `labels`, `filters` | Organisational structure. |
-| Notebooks & note pages | `notebooks`, `note_pages` | A page's rich-text content is one `content` column (JSON of positioned boxes). |
-| Attachments | `attachments` | File `content` is stored inline in the row; `byte_size` records its size. |
-| Pasted images in notes | `note_pages.content` | Embedded as base64 `data:` URLs **inside** the page content — they are not separate files. |
-| AI activity / usage | `ai_logs` | Prompt, response and token counts per generative call. |
-| Karma events | `karma_events` | Productivity scoring history. |
-| Calendar subscriptions | `calendar_sources`, `mindlog_id_connections` | External feeds are fetched live, not stored as events. |
-| Accounts, auth, API keys, OAuth | `users`, `refresh_tokens`, `password_reset_tokens`, `api_keys`, `oauth_*`, `user_ai_settings` | Self-hosted AI keys are stored **encrypted** in `user_ai_settings`. |
+| Data                                   | Table(s)                                                                                      | Notes                                                                                      |
+| -------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Tasks                                  | `tasks`                                                                                       | Title, description, dates, status, priority, recurrence, hierarchy.                        |
+| Task ↔ label links                     | `task_labels`                                                                                 | Join table.                                                                                |
+| Projects / sections / labels / filters | `projects`, `sections`, `labels`, `filters`                                                   | Organisational structure.                                                                  |
+| Notebooks & note pages                 | `notebooks`, `note_pages`                                                                     | A page's rich-text content is one `content` column (JSON of positioned boxes).             |
+| Attachments                            | `attachments`                                                                                 | File `content` is stored inline in the row; `byte_size` records its size.                  |
+| Pasted images in notes                 | `note_pages.content`                                                                          | Embedded as base64 `data:` URLs **inside** the page content — they are not separate files. |
+| AI activity / usage                    | `ai_logs`                                                                                     | Prompt, response and token counts per generative call.                                     |
+| Karma events                           | `karma_events`                                                                                | Productivity scoring history.                                                              |
+| Calendar subscriptions                 | `calendar_sources`, `mindlog_id_connections`                                                  | External feeds are fetched live, not stored as events.                                     |
+| Accounts, auth, API keys, OAuth        | `users`, `refresh_tokens`, `password_reset_tokens`, `api_keys`, `oauth_*`, `user_ai_settings` | Self-hosted AI keys are stored **encrypted** in `user_ai_settings`.                        |
 
 ### Search embeddings (RAG)
 

@@ -28,6 +28,25 @@ describe('parseRecurrence', () => {
     ['every 1st of the month', { freq: 'monthly', interval: 1, monthday: 1 }],
     ['yearly', { freq: 'yearly', interval: 1 }],
     ['every 2 years', { freq: 'yearly', interval: 2 }],
+    // French phrasing.
+    ['quotidien', { freq: 'daily', interval: 1 }],
+    ['tous les jours', { freq: 'daily', interval: 1 }],
+    ['chaque jour', { freq: 'daily', interval: 1 }],
+    ['tous les 3 jours', { freq: 'daily', interval: 3 }],
+    ['tous les deux jours', { freq: 'daily', interval: 2 }],
+    ['toutes les semaines', { freq: 'weekly', interval: 1 }],
+    ['toutes les 2 semaines', { freq: 'weekly', interval: 2 }],
+    ['tous les lundis', { freq: 'weekly', interval: 1, weekdays: [1] }],
+    ['tous les lundi, mercredi et vendredi', { freq: 'weekly', interval: 1, weekdays: [1, 3, 5] }],
+    ['tous les jours ouvrés', { freq: 'weekly', interval: 1, weekdays: [1, 2, 3, 4, 5] }],
+    ['en semaine', { freq: 'weekly', interval: 1, weekdays: [1, 2, 3, 4, 5] }],
+    ['le week-end', { freq: 'weekly', interval: 1, weekdays: [0, 6] }],
+    ['chaque mois', { freq: 'monthly', interval: 1 }],
+    ['tous les 3 mois', { freq: 'monthly', interval: 3 }],
+    ['tous les 15', { freq: 'monthly', interval: 1, monthday: 15 }],
+    ['tous les 15 du mois', { freq: 'monthly', interval: 1, monthday: 15 }],
+    ['chaque année', { freq: 'yearly', interval: 1 }],
+    ['tous les ans', { freq: 'yearly', interval: 1 }],
   ];
 
   it.each(cases)('parses %s', (input, expected) => {

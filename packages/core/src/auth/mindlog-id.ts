@@ -145,7 +145,18 @@ export async function refreshMindlogIdToken(refreshToken: string): Promise<Mindl
       client_secret: config.mindlogId.clientSecret,
     }).toString(),
   });
-  if (!res.ok) throw new Error(`mindlog id token refresh failed (${res.status})`);
+  if (!res.ok) {
+    // A 4xx means the IdP *explicitly* rejected the grant — RFC 6749
+    // `invalid_grant`: the refresh token was revoked, expired, or never existed.
+    // That is a statement about the session and callers may act on it.
+    // A 5xx or a network failure is a different animal: it says nothing about
+    // the session, only that the IdP is unreachable. Conflating the two would
+    // sign every federated user out during an IdP outage.
+    if (res.status >= 400 && res.status < 500) {
+      throw new MindlogIdAuthError(`refresh token rejected by mindlog id (${res.status})`);
+    }
+    throw new Error(`mindlog id token refresh failed (${res.status})`);
+  }
   const t = (await res.json()) as {
     access_token?: string;
     refresh_token?: string;

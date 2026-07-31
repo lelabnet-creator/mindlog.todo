@@ -35,9 +35,8 @@ accountRouter.get('/api-keys', async (req, res) => {
 
 accountRouter.post('/api-keys', async (req, res) => {
   const { name } = apiKeyCreateSchema.parse(req.body);
-  const { apiKey, secret } = await authService.createApiKey(userId(req), name);
-  // `secret` is returned only once, at creation time.
-  res.status(201).json({ ...apiKey, secret });
+  // Returns ApiKeyCreated: the secret travels back only once, at creation time.
+  res.status(201).json(await authService.createApiKey(userId(req), name));
 });
 
 accountRouter.delete('/api-keys/:id', async (req, res) => {

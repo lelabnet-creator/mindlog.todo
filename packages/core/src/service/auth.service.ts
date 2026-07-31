@@ -12,7 +12,14 @@ import { signAccessToken, signMindlogIdPending, verifyMindlogIdPending } from '.
 import { hashPassword, verifyPassword } from '../auth/password.js';
 import { generateApiKey, generateRefreshToken, parseDurationMs, sha256 } from '../auth/tokens.js';
 import { config } from '../config.js';
-import type { ApiKey, AuthResult, LoginInput, RegisterInput, User } from '../domain/user.js';
+import type {
+  ApiKey,
+  ApiKeyCreated,
+  AuthResult,
+  LoginInput,
+  RegisterInput,
+  User,
+} from '../domain/user.js';
 import { BadRequest, Conflict, Unauthorized } from '../errors.js';
 import { sendMail } from '../mail/mailer.js';
 import { passwordResetEmail } from '../mail/templates/password-reset.js';
@@ -298,13 +305,11 @@ export async function updateProfile(
   return user;
 }
 
-export async function createApiKey(
-  userId: string,
-  name?: string,
-): Promise<{ apiKey: ApiKey; secret: string }> {
+export async function createApiKey(userId: string, name?: string): Promise<ApiKeyCreated> {
   const { key, prefix, hash } = generateApiKey();
   const apiKey = await userRepo.createApiKey({ userId, name, prefix, keyHash: hash });
-  return { apiKey, secret: key };
+  // The secret travels back exactly once; only its hash was persisted.
+  return { ...apiKey, secret: key };
 }
 
 export function listApiKeys(userId: string): Promise<ApiKey[]> {

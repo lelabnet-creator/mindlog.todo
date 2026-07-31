@@ -16,7 +16,7 @@
   "scripts": {
     "build": "npm run build -w @mindlog/core && npm run build -w @mindlog/server && npm run build -w @mindlog/web",
     "build:server": "npm run build -w @mindlog/core && npm run build -w @mindlog/server",
-    "typecheck": "npm run typecheck -w @mindlog/core && npm run typecheck -w @mindlog/server",
+    "typecheck": "npm run build -w @mindlog/core && npm run typecheck -w @mindlog/core && npm run typecheck -w @mindlog/server",
     "dev:server": "npm run dev -w @mindlog/server",
     "dev:web": "npm run dev -w @mindlog/web",
     "migrate": "npm run migrate -w @mindlog/core",

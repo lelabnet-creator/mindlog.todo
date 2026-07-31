@@ -1,4 +1,4 @@
-import { config, getPool } from '@mindlog/core';
+import { config, getPool, googleEnabled, mailEnabled, mindlogIdEnabled } from '@mindlog/core';
 import cors from 'cors';
 import express, { type Express } from 'express';
 import swaggerUi from 'swagger-ui-express';
@@ -56,8 +56,20 @@ export function createApp(plugins: MindlogPlugin[] = []): Express {
   app.use(oauthRouter);
 
   // Public version endpoint (Settings → About). Under /api/v1 so the edge proxies it.
+  // Also advertises which sign-in paths this deployment actually has configured,
+  // so the login page can hide the others. Offering an unconfigured one is worse
+  // than not offering it at all: Google / mindlog id answer 503, and password
+  // reset answers 202 but never sends anything — a silent dead end.
   app.get('/api/v1/version', (_req, res) =>
-    res.json({ version: config.appVersion, buildDate: config.appBuildDate }),
+    res.json({
+      version: config.appVersion,
+      buildDate: config.appBuildDate,
+      authProviders: {
+        mindlogId: mindlogIdEnabled(),
+        google: googleEnabled(),
+        passwordReset: mailEnabled(),
+      },
+    }),
   );
 
   // REST API. `authenticate` only populates req.userId; routers enforce auth.

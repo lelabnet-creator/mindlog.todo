@@ -447,7 +447,67 @@ function migrations(): Migration[] {
   ];
 }
 
+const DB_UNAVAILABLE =
+  /ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ECONNRESET|EHOSTUNREACH|ETIMEDOUT|starting up|Connection terminated/i;
+
+/**
+ * Is this an *availability* error (as opposed to a content error)?
+ *
+ * Only these are retried: an invalid migration or a conflicting schema must fail
+ * at once, not after 30 attempts. The cause chain is walked because drivers and
+ * query layers wrap the original error — the depth bound guards against cycles.
+ */
+function isDbUnavailable(e: unknown): boolean {
+  for (let cur: unknown = e, depth = 0; cur != null && depth < 5; depth++) {
+    const err = cur as { code?: string; message?: string; cause?: unknown };
+    // 57P03 = cannot_connect_now: Postgres is up but still recovering.
+    if (err.code === '57P03') return true;
+    if (DB_UNAVAILABLE.test(`${err.code ?? ''} ${err.message ?? ''}`)) return true;
+    cur = err.cause;
+  }
+  return false;
+}
+
+/** Deepest error message — wrappers say nothing useful. */
+function rootCause(e: unknown): string {
+  let msg = String((e as Error)?.message ?? e);
+  for (let cur: unknown = e, depth = 0; cur != null && depth < 5; depth++) {
+    const err = cur as { message?: string; cause?: unknown };
+    if (err.message) msg = err.message;
+    cur = err.cause;
+  }
+  // `noUncheckedIndexedAccess` is on here: split() always yields ≥1 element, but
+  // the compiler can't know that.
+  return msg.split('\n')[0] ?? msg;
+}
+
+/**
+ * Apply migrations, waiting for the database to become reachable.
+ *
+ * Without this loop, a boot where Postgres lags behind the API makes `migrate()`
+ * reject, `main()` calls `process.exit(1)`, and the service only recovers via the
+ * restart policy's crash-loop (backoff up to 1 min).
+ */
 export async function migrate(): Promise<void> {
+  const attempts = Math.max(1, config.dbConnectRetries);
+  const delayMs = Math.max(0, config.dbConnectRetryDelayMs);
+
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await runMigrations();
+      if (attempt > 1) console.log(`[migrate] database reachable (after ${attempt} attempts)`);
+      return;
+    } catch (e) {
+      if (attempt >= attempts || !isDbUnavailable(e)) throw e;
+      console.warn(
+        `[migrate] database unavailable (${rootCause(e)}) — attempt ${attempt + 1}/${attempts} in ${delayMs} ms`,
+      );
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+}
+
+async function runMigrations(): Promise<void> {
   const pool = getPool();
   await pool.query(
     `CREATE TABLE IF NOT EXISTS _migrations (

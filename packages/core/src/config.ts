@@ -54,6 +54,11 @@ export const config = {
   publicUrl: env('PUBLIC_URL', 'http://localhost:8080'),
   webUrl: env('WEB_URL', 'http://localhost:5173'),
   databaseUrl: env('DATABASE_URL', 'postgres://mindlog:mindlog@localhost:5432/mindlog'),
+  // Startup wait for Postgres. On host boot, Docker restarts containers WITHOUT
+  // honouring compose's `depends_on: condition: service_healthy` (that only
+  // applies to `docker compose up`), so the API can start before its database.
+  dbConnectRetries: intEnv('DB_CONNECT_RETRIES', 30),
+  dbConnectRetryDelayMs: intEnv('DB_CONNECT_RETRY_DELAY_MS', 1000),
 
   embeddingProvider: (env('EMBEDDING_PROVIDER', 'local') as EmbeddingProviderId),
   embeddingDim: intEnv('EMBEDDING_DIM', 384),

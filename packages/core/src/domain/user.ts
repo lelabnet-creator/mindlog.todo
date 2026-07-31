@@ -77,6 +77,19 @@ export interface ApiKey {
   lastUsedAt: string | null;
 }
 
+/**
+ * Wire shape of POST /api-keys. The secret is returned exactly once, at
+ * creation — only its hash is stored, so it can never be shown again.
+ *
+ * Deliberately a distinct type rather than an optional field on `ApiKey`: with
+ * `secret?` on the base type, listing keys would suggest a secret might be
+ * present when it never is. The web client used to declare it that way, which
+ * is how it type-checked against a shape core never described.
+ */
+export interface ApiKeyCreated extends ApiKey {
+  secret: string;
+}
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;

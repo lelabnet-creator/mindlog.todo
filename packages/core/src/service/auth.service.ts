@@ -3,6 +3,8 @@ import {
   exchangeMindlogIdCode,
   getMindlogIdAuthUrl,
   hasAgendaScope,
+  MindlogIdAuthError,
+  refreshMindlogIdToken,
   setMindlogIdRecoveryEmail,
   type MindlogIdTokens,
 } from '../auth/mindlog-id.js';
@@ -10,7 +12,14 @@ import { signAccessToken, signMindlogIdPending, verifyMindlogIdPending } from '.
 import { hashPassword, verifyPassword } from '../auth/password.js';
 import { generateApiKey, generateRefreshToken, parseDurationMs, sha256 } from '../auth/tokens.js';
 import { config } from '../config.js';
-import type { ApiKey, AuthResult, LoginInput, RegisterInput, User } from '../domain/user.js';
+import type {
+  ApiKey,
+  ApiKeyCreated,
+  AuthResult,
+  LoginInput,
+  RegisterInput,
+  User,
+} from '../domain/user.js';
 import { BadRequest, Conflict, Unauthorized } from '../errors.js';
 import { sendMail } from '../mail/mailer.js';
 import { passwordResetEmail } from '../mail/templates/password-reset.js';
@@ -76,6 +85,48 @@ export async function issueTokensForUserId(userId: string): Promise<AuthResult> 
   return issueTokens(user);
 }
 
+/**
+ * mindlog id is the identity AUTHORITY, so a session it has revoked must not
+ * survive here. Federated accounts therefore re-validate on every token refresh:
+ * we re-exchange the stored IdP refresh token, which both proves the IdP session
+ * is still alive and rotates our copy (the agenda scope needs it fresh anyway).
+ *
+ * Why here and not OIDC back-channel logout: back-channel logout needs a session
+ * registry and `sid` claims on the IdP plus a new receiving endpoint here, on
+ * both sides. Re-validating at refresh uses only endpoints that already exist,
+ * and bounds the staleness to one access-token lifetime (JWT_ACCESS_TTL, 15 min
+ * by default) — the same window back-channel logout would leave open for access
+ * tokens anyway, since it only kills sessions.
+ *
+ * Fails OPEN when the IdP is merely unreachable: an IdP outage must not sign
+ * every federated user out. Only an explicit rejection (MindlogIdAuthError,
+ * i.e. a 4xx `invalid_grant`) counts as "the session is gone".
+ *
+ * Local (password) and Google accounts have no connection row and are untouched.
+ */
+async function assertMindlogIdSessionAlive(userId: string): Promise<void> {
+  const conn = await userRepo.getMindlogIdConnection(userId);
+  if (!conn) return;
+
+  try {
+    const rotated = await refreshMindlogIdToken(conn.refreshToken);
+    await storeMindlogIdConnection(userId, rotated);
+  } catch (e) {
+    if (!(e instanceof MindlogIdAuthError)) {
+      // IdP unreachable / 5xx — say nothing about the session, keep serving.
+      console.warn(
+        `[auth] mindlog id unreachable while re-validating ${userId}: ${(e as Error).message}`,
+      );
+      return;
+    }
+    // The authority says this session is over. Drop every credential we minted
+    // off the back of it, not just the one being refreshed.
+    await userRepo.revokeAllRefreshTokens(userId);
+    await userRepo.deleteMindlogIdConnection(userId);
+    throw Unauthorized('mindlog id session was revoked — please sign in again');
+  }
+}
+
 export async function refresh(refreshToken: string): Promise<AuthResult> {
   const hash = sha256(refreshToken);
   const found = await userRepo.findValidRefreshToken(hash);
@@ -83,6 +134,7 @@ export async function refresh(refreshToken: string): Promise<AuthResult> {
   await userRepo.revokeRefreshToken(hash); // rotation: single-use refresh tokens
   const user = await userRepo.findById(found.userId);
   if (!user) throw Unauthorized('User not found');
+  await assertMindlogIdSessionAlive(user.id);
   return issueTokens(user);
 }
 
@@ -196,8 +248,10 @@ export async function loginWithMindlogId(code: string): Promise<MindlogIdLoginRe
 export async function completeMindlogIdSignup(pendingToken: string, email: string): Promise<AuthResult> {
   const pending = verifyMindlogIdPending(pendingToken);
   if (!pending) throw Unauthorized('Invalid or expired mindlog id session — please sign in again');
-  // Make mindlog id the single source of truth: store the email there too. The
-  // IdP won't overwrite an existing one, and a failure must not block sign-in.
+  // mindlog id is the identity authority, so the address the user just typed
+  // belongs there, not only here — see assertMindlogIdSessionAlive() for the
+  // other half of that stance (revocation propagates back to us). The IdP won't
+  // overwrite an existing address, and a failure must not block sign-in.
   if (pending.accessToken) {
     try {
       await setMindlogIdRecoveryEmail(pending.accessToken, email);
@@ -251,13 +305,11 @@ export async function updateProfile(
   return user;
 }
 
-export async function createApiKey(
-  userId: string,
-  name?: string,
-): Promise<{ apiKey: ApiKey; secret: string }> {
+export async function createApiKey(userId: string, name?: string): Promise<ApiKeyCreated> {
   const { key, prefix, hash } = generateApiKey();
   const apiKey = await userRepo.createApiKey({ userId, name, prefix, keyHash: hash });
-  return { apiKey, secret: key };
+  // The secret travels back exactly once; only its hash was persisted.
+  return { ...apiKey, secret: key };
 }
 
 export function listApiKeys(userId: string): Promise<ApiKey[]> {

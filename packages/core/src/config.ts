@@ -53,7 +53,16 @@ export const config = {
   appBuildDate: env('APP_BUILD_DATE', ''),
   publicUrl: env('PUBLIC_URL', 'http://localhost:8080'),
   webUrl: env('WEB_URL', 'http://localhost:5173'),
+  // Comma-separated browser origins allowed to read API responses. Empty = the
+  // built-in list (see corsOptions in rest/app.ts); the literal `*` restores the
+  // previous allow-everything behaviour as an escape hatch.
+  corsOrigins: env('CORS_ORIGINS', ''),
   databaseUrl: env('DATABASE_URL', 'postgres://mindlog:mindlog@localhost:5432/mindlog'),
+  // Startup wait for Postgres. On host boot, Docker restarts containers WITHOUT
+  // honouring compose's `depends_on: condition: service_healthy` (that only
+  // applies to `docker compose up`), so the API can start before its database.
+  dbConnectRetries: intEnv('DB_CONNECT_RETRIES', 30),
+  dbConnectRetryDelayMs: intEnv('DB_CONNECT_RETRY_DELAY_MS', 1000),
 
   embeddingProvider: (env('EMBEDDING_PROVIDER', 'local') as EmbeddingProviderId),
   embeddingDim: intEnv('EMBEDDING_DIM', 384),

@@ -8,6 +8,13 @@ let pool: pg.Pool | null = null;
 export function getPool(): pg.Pool {
   if (!pool) {
     pool = new Pool({ connectionString: config.databaseUrl, max: 10 });
+    // An IDLE pooled client that dies (Postgres restarts, network drops) emits
+    // `error` on the pool. With no listener, EventEmitter turns that into an
+    // uncaught exception and the process dies. Swallow it: pg discards the bad
+    // client and the next query opens a fresh one.
+    pool.on('error', (err) => {
+      console.error(`[db] idle Postgres client lost: ${err.message} (pool will reconnect)`);
+    });
   }
   return pool;
 }

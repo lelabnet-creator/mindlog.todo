@@ -3,6 +3,7 @@ import type {
   AiSettings,
   AiUsage,
   ApiKey,
+  ApiKeyCreated,
   Attachment,
   CalendarSource,
   ExternalEvent,
@@ -26,6 +27,7 @@ import type {
   TaskHit,
   TaskStatus,
   User,
+  VersionInfo,
 } from '../types';
 
 export const API: string = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
@@ -488,9 +490,10 @@ export const api = {
     return request<StorageUsage>('/api/v1/storage');
   },
 
-  // deployed version (Settings → About)
-  version(): Promise<{ version: string; buildDate: string }> {
-    return request<{ version: string; buildDate: string }>('/api/v1/version');
+  // deployed version (Settings → About) + which sign-in paths this deployment
+  // has configured (the login page hides the ones that are off).
+  version(): Promise<VersionInfo> {
+    return request<VersionInfo>('/api/v1/version');
   },
 
   // AI activity
@@ -505,8 +508,8 @@ export const api = {
   listApiKeys(): Promise<ApiKey[]> {
     return request<ApiKey[]>('/api/v1/api-keys');
   },
-  createApiKey(name?: string): Promise<ApiKey> {
-    return request<ApiKey>('/api/v1/api-keys', { method: 'POST', body: JSON.stringify({ name }) });
+  createApiKey(name?: string): Promise<ApiKeyCreated> {
+    return request<ApiKeyCreated>('/api/v1/api-keys', { method: 'POST', body: JSON.stringify({ name }) });
   },
   deleteApiKey(id: string): Promise<void> {
     return request<void>(`/api/v1/api-keys/${id}`, { method: 'DELETE' });

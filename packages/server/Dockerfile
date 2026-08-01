@@ -5,9 +5,9 @@ WORKDIR /app
 COPY package.json tsconfig.base.json ./
 COPY packages/core/package.json ./packages/core/package.json
 COPY packages/server/package.json ./packages/server/package.json
-COPY packages/web/package.json ./packages/web/package.json
 
-# Install only the core + server workspaces (skip the web app's React/Vite deps).
+# Le client web a quitté ce dépôt (mindlog.todo.clients) : plus de workspace
+# `packages/web` à déclarer, ni de deps React/Vite à esquiver.
 RUN npm install -w @mindlog/core -w @mindlog/server --include-workspace-root
 
 COPY packages/core ./packages/core

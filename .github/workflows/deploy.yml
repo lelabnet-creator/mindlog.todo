@@ -19,7 +19,7 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # 1) Build the api + web images and push them to GHCR.
+  # 1) Build the api image and push it to GHCR (le web est bâti ailleurs).
   # ---------------------------------------------------------------------------
   build:
     runs-on: ubuntu-latest
@@ -63,20 +63,10 @@ jobs:
           cache-from: type=gha,scope=api
           cache-to: type=gha,scope=api,mode=max
 
-      - name: Build & push Web image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: packages/web/Dockerfile
-          push: true
-          build-args: |
-            VITE_API_URL=/app
-            VITE_BASE=/app/
-          tags: |
-            ${{ steps.meta.outputs.prefix }}/web:${{ steps.meta.outputs.tag }}
-            ${{ steps.meta.outputs.prefix }}/web:latest
-          cache-from: type=gha,scope=web
-          cache-to: type=gha,scope=web,mode=max
+      # L'image web n'est PLUS construite ici : le client a quitté ce dépôt pour
+      # `mindlog.todo.clients`, qui la publie sous son propre paquet GHCR
+      # (.github/workflows/build-web.yml). Le compose de prod la référence via
+      # WEB_TAG, indépendant du tag de l'API.
 
   # ---------------------------------------------------------------------------
   # 2) Ship compose + nginx config to str01 over SSH and roll the stack.
@@ -98,7 +88,7 @@ jobs:
           username: ${{ secrets.STR01_USER }}
           key: ${{ secrets.STR01_SSH_KEY }}
           port: ${{ secrets.STR01_SSH_PORT || 22 }}
-          source: "docker-compose.prod.yml,packages/web/nginx.prod.conf"
+          source: "docker-compose.prod.yml,nginx.prod.conf"
           # Relative target lands in the SSH user's home dir (tilde is unreliable).
           target: ${{ secrets.STR01_PATH || 'mindlog.todo' }}
 
@@ -115,11 +105,6 @@ jobs:
             set -euo pipefail
             DIR="${{ secrets.STR01_PATH || 'mindlog.todo' }}"
             cd "$DIR"
-            # scp preserved the source path; flatten nginx.prod.conf into the dir.
-            if [ -f packages/web/nginx.prod.conf ]; then
-              mv -f packages/web/nginx.prod.conf ./nginx.prod.conf
-              rm -rf packages
-            fi
             if [ ! -f .env ]; then
               echo "ERROR: $DIR/.env is missing. Create it from .env.prod.example before deploying." >&2
               exit 1

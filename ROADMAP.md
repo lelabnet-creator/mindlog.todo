@@ -15,7 +15,7 @@ are out of scope (see [§11](#11-explicitly-out-of-scope)).
 |---|---|---|
 | `packages/core` | TS + Zod domain, services, repos | `Task` (id, parentId, title, description, assignee, dueDate, status, progress, position), hierarchical sub-tasks, pgvector embeddings, RAG ask |
 | `packages/server` | Express REST + **MCP server** + **OpenAPI** | `/api/v1/tasks` CRUD/search/ask, JWT auth, **API keys**, Google OAuth scaffold |
-| `packages/web` | React SPA | List/tree view, create, status filter, semantic search + ask panels |
+| `mindlog.todo.clients/web` | React SPA (dépôt frère) | List/tree view, create, status filter, semantic search + ask panels |
 | DB | Postgres 16 + pgvector | One `tasks` table; **inline append-only migrations** in `db/migrate.ts` |
 
 **Key reusable foundations already in place:** API-key auth (`api_keys` table),

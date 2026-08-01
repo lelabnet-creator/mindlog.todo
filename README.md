@@ -17,8 +17,11 @@ Tasks carry **what** (title + description), **who** (assignee), **when** (due da
 ```
 packages/core    shared service core — domain, repositories, embeddings, RAG, auth
 packages/server  deployable micro-service — REST API + MCP (HTTP & stdio) + OpenAPI/Swagger
-packages/web     React + Vite SPA — pure REST client
 ```
+
+The clients live in a **sibling repository**, `mindlog.todo.clients` — the React
+SPA (`web/`) and the Capacitor Android shell (`android/`) that wraps it. This
+repo is the API; it serves no UI.
 
 The REST controllers and the MCP tools both call the **same** `core` service functions, so
 there is no duplicated business logic. The web UI never touches the database; it only calls

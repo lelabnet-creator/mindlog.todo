@@ -58,8 +58,12 @@ services:
   # Generate the dev certificate first: `./scripts/gen-certs.sh`.
   web:
     build:
-      context: .
-      dockerfile: packages/web/Dockerfile
+      # Le client web vit dans le dépôt frère `mindlog.todo.clients` : ce
+      # contexte suppose les deux dépôts clonés côte à côte, comme dans le
+      # monorepo. En prod l'image vient de GHCR (cf. docker-compose.prod.yml),
+      # rien ne se construit depuis ici.
+      context: ../mindlog.todo.clients/web
+      dockerfile: Dockerfile
       args:
         # Empty => the SPA calls same-origin /api (proxied by this nginx).
         VITE_API_URL: ""

@@ -3,6 +3,11 @@ export interface PasswordResetEmailInput {
   displayName?: string | null;
   /** Human-readable token lifetime, e.g. "1 hour". */
   expiresIn: string;
+  /**
+   * The account has no password yet (federated sign-up): the link sets a first
+   * one instead of replacing an existing one, and the copy says so.
+   */
+  firstPassword?: boolean;
 }
 
 const BRAND = '#db4c3f';
@@ -14,7 +19,18 @@ export function passwordResetEmail(input: PasswordResetEmailInput): {
   text: string;
 } {
   const greeting = input.displayName ? `Hi ${input.displayName},` : 'Hi,';
-  const subject = 'Reset your mindlog password';
+  const first = input.firstPassword === true;
+  const subject = first ? 'Set your mindlog password' : 'Reset your mindlog password';
+  const lead = first
+    ? 'We received a request to set a password for your mindlog account. You signed up with a provider, so this account has none yet — choose one with the button below. Your existing sign-in keeps working.'
+    : 'We received a request to reset the password for your mindlog account. Choose a new one with the button below.';
+  const cta = first ? 'Set my password' : 'Reset my password';
+  const disclaimer = first
+    ? `This link expires in ${input.expiresIn}. If you didn't request this, you can safely ignore this email — no password will be set.`
+    : `This link expires in ${input.expiresIn}. If you didn't request a reset, you can safely ignore this email — your password won't change.`;
+  const textLead = first
+    ? `Set a password on your mindlog account with this link (expires in ${input.expiresIn}):`
+    : `Reset your mindlog password with this link (expires in ${input.expiresIn}):`;
   const mjml = `
 <mjml>
   <mj-head>
@@ -33,9 +49,9 @@ export function passwordResetEmail(input: PasswordResetEmailInput): {
     <mj-section background-color="#ffffff" border-radius="12px" padding="32px">
       <mj-column>
         <mj-text font-size="18px" font-weight="600">${greeting}</mj-text>
-        <mj-text>We received a request to reset the password for your mindlog account. Choose a new one with the button below.</mj-text>
-        <mj-button css-class="btn" background-color="${BRAND}" border-radius="8px" href="${input.resetUrl}" padding="16px 0">Reset my password</mj-button>
-        <mj-text color="#6b7280" font-size="13px">This link expires in ${input.expiresIn}. If you didn't request a reset, you can safely ignore this email — your password won't change.</mj-text>
+        <mj-text>${lead}</mj-text>
+        <mj-button css-class="btn" background-color="${BRAND}" border-radius="8px" href="${input.resetUrl}" padding="16px 0">${cta}</mj-button>
+        <mj-text color="#6b7280" font-size="13px">${disclaimer}</mj-text>
         <mj-text color="#9ca3af" font-size="12px">Or paste this link into your browser:<br />${input.resetUrl}</mj-text>
       </mj-column>
     </mj-section>
@@ -48,7 +64,7 @@ export function passwordResetEmail(input: PasswordResetEmailInput): {
 </mjml>`.trim();
   const text = `${greeting}
 
-Reset your mindlog password with this link (expires in ${input.expiresIn}):
+${textLead}
 ${input.resetUrl}
 
 If you didn't request this, you can ignore this email.`;

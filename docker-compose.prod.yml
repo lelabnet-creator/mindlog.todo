@@ -23,12 +23,19 @@ services:
       retries: 10
 
   api:
-    image: ${REGISTRY:-ghcr.io/jacquesh82/mindlog.todo}/api:${IMAGE_TAG:-latest}
+    # IMAGE_TAG est EXIGÉ, sans repli sur `latest` : le 2026-08-01 un `up -d`
+    # lancé à la main sans ce tag a résolu `api:latest` sur l'image locale du
+    # 26/06 — jamais re-pullée, car la CI ne tire que le tag qu'elle déploie —
+    # et a rétrogradé la prod de six semaines en silence. Symptôme : la route
+    # /api/v1/auth/mindlog-id n'existait pas dans ce build et tombait dans le
+    # `requireAuth` fourre-tout d'accountRouter, donc 401 au lieu de 404.
+    # Échouer bruyamment vaut mieux que servir une version arbitraire.
+    image: ${REGISTRY:-ghcr.io/jacquesh82/mindlog.todo}/api:${IMAGE_TAG:?IMAGE_TAG must be set (ex. IMAGE_TAG=v1.7.1) — pas de repli sur latest}
     env_file: .env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-mindlog}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-mindlog}
       PORT: 8080
-      APP_VERSION: ${IMAGE_TAG:-dev}
+      APP_VERSION: ${IMAGE_TAG}
       APP_BUILD_DATE: ${APP_BUILD_DATE:-}
     expose:
       - "8080"

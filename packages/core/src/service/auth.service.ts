@@ -145,13 +145,22 @@ export async function logout(refreshToken: string): Promise<void> {
 // --- password reset ---
 
 /**
- * Email a one-time reset link to the address, if it belongs to a local
- * (password) account. Always resolves silently so callers cannot probe which
- * emails are registered.
+ * Email a one-time reset link to the address. Always resolves silently so
+ * callers cannot probe which emails are registered.
+ *
+ * A federated (Google / mindlog id) account with no local password is served
+ * too: the link then SETS a first password rather than replacing one. The email
+ * on file is what the flow trusts, and it is exactly what the IdP vouched for,
+ * so an owner locked out of their provider still has a way back in.
+ *
+ * Consequence to keep in mind: the resulting password is a credential mindlog id
+ * cannot revoke. `assertMindlogIdSessionAlive` drops the connection row when the
+ * authority rejects the session, and a subsequent `login()` by password never
+ * consults the IdP again.
  */
 export async function requestPasswordReset(email: string): Promise<void> {
   const row = await userRepo.findRowByEmail(email);
-  if (!row?.password_hash) return; // unknown email, or Google/mindlog-id-only account
+  if (!row) return; // unknown email — say nothing
   const { token, hash } = generateRefreshToken();
   const expiresAt = new Date(Date.now() + parseDurationMs(config.passwordResetTtl));
   await userRepo.createPasswordResetToken({ userId: row.id, tokenHash: hash, expiresAt });
@@ -160,6 +169,9 @@ export async function requestPasswordReset(email: string): Promise<void> {
     resetUrl,
     displayName: row.display_name,
     expiresIn: humanTtl(config.passwordResetTtl),
+    // No hash on file = the account never had a password; the email must say
+    // "set" instead of "reset", or it describes something that never happened.
+    firstPassword: !row.password_hash,
   });
   await sendMail({ to: row.email, subject: mail.subject, mjml: mail.mjml, text: mail.text });
 }

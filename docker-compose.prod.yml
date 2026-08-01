@@ -45,10 +45,9 @@ services:
       retries: 20
 
   web:
-    # Le client web vit dans `mindlog.todo.clients` depuis la scission : son
-    # image y est construite et publiée, donc sous un autre paquet GHCR et avec
-    # un SHA propre. D'où WEB_TAG, distinct d'IMAGE_TAG qui ne tague plus que
-    # l'API — un tag commun n'aurait plus de sens entre deux dépôts.
+    # Le client web vit dans le dépôt `mindlog.todo.clients`, qui construit et
+    # publie son image sous son propre paquet GHCR. Son tag est donc distinct de
+    # celui de l'API : WEB_TAG d'un côté, IMAGE_TAG de l'autre.
     image: ${WEB_REGISTRY:-ghcr.io/jacquesh82/mindlog.todo.clients}/web:${WEB_TAG:-latest}
     # Serves the SPA over plain HTTP on a loopback port. TLS for todo.mindlog.today
     # is terminated by the Astro front (mindlog.landings/todo), which proxies the `/app`

@@ -6,8 +6,8 @@ COPY package.json tsconfig.base.json ./
 COPY packages/core/package.json ./packages/core/package.json
 COPY packages/server/package.json ./packages/server/package.json
 
-# Le client web a quitté ce dépôt (mindlog.todo.clients) : plus de workspace
-# `packages/web` à déclarer, ni de deps React/Vite à esquiver.
+# Ce dépôt ne contient que core + server ; les clients sont dans
+# `mindlog.todo.clients`.
 RUN npm install -w @mindlog/core -w @mindlog/server --include-workspace-root
 
 COPY packages/core ./packages/core

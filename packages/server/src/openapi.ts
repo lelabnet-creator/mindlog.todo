@@ -10,6 +10,19 @@ import {
   filterSchema,
   filterUpdateSchema,
   forgotPasswordSchema,
+  drawCleanupResultSchema,
+  drawCleanupSchema,
+  extractedTasksSchema,
+  notebookCreateSchema,
+  notebookRagResultSchema,
+  notebookRagSchema,
+  notebookSchema,
+  notebookUpdateSchema,
+  notePageHitSchema,
+  notePageSchema,
+  notePageSummarySchema,
+  pageCreateSchema,
+  pageUpdateSchema,
   labelCreateSchema,
   labelSchema,
   labelUpdateSchema,
@@ -98,6 +111,17 @@ const projectListQueryDocSchema = z.object({
   includeArchived: z.boolean().optional(),
 });
 
+/**
+ * Même raison pour la recherche de notes : `k` est un `z.coerce.number()` dans
+ * le parseur, et la coercition enveloppe le type d'une façon qu'OpenAPI ne sait
+ * pas décrire. La liste des champs, elle, doit rester identique.
+ */
+const noteSearchDocSchema = z.object({
+  query: z.string().min(1),
+  k: z.number().int().min(1).max(50).optional().describe('Default 10, max 50.'),
+  notebookIds: z.array(z.uuid()).optional(),
+});
+
 function buildDocument(version: '3.1.0' | '3.0.3') {
   const r = new OpenAPIRegistry();
 
@@ -116,6 +140,13 @@ function buildDocument(version: '3.1.0' | '3.0.3') {
   const Section = ref('Section', sectionSchema);
   const Label = ref('Label', labelSchema);
   const Filter = ref('Filter', filterSchema);
+  const Notebook = ref('Notebook', notebookSchema);
+  const NotePage = ref('NotePage', notePageSchema);
+  const NotePageSummary = ref('NotePageSummary', notePageSummarySchema);
+  const NotePageHit = ref('NotePageHit', notePageHitSchema);
+  const NotebookRagResult = ref('NotebookRagResult', notebookRagResultSchema);
+  const ExtractedTasks = ref('ExtractedTasks', extractedTasksSchema);
+  const DrawCleanupResult = ref('DrawCleanupResult', drawCleanupResultSchema);
   const User = ref('User', userSchema);
   const ApiKey = ref('ApiKey', apiKeySchema);
   const ApiKeyCreated = ref('ApiKeyCreated', apiKeyCreatedSchema);
@@ -153,6 +184,13 @@ function buildDocument(version: '3.1.0' | '3.0.3') {
   const LabelUpdate = ref('LabelUpdateRequest', labelUpdateSchema);
   const FilterCreate = ref('FilterCreateRequest', filterCreateSchema);
   const FilterUpdate = ref('FilterUpdateRequest', filterUpdateSchema);
+  const NotebookCreate = ref('NotebookCreateRequest', notebookCreateSchema);
+  const NotebookUpdate = ref('NotebookUpdateRequest', notebookUpdateSchema);
+  const NotebookRag = ref('NotebookRagRequest', notebookRagSchema);
+  const PageCreate = ref('PageCreateRequest', pageCreateSchema);
+  const PageUpdate = ref('PageUpdateRequest', pageUpdateSchema);
+  const DrawCleanup = ref('DrawCleanupRequest', drawCleanupSchema);
+  const NoteSearch = ref('NoteSearchRequest', noteSearchDocSchema);
 
   const id = z.object({ id: z.string() });
   const notFound = { description: 'Not found', ...json(errorSchema) };
@@ -422,6 +460,101 @@ function buildDocument(version: '3.1.0' | '3.0.3') {
     method: 'delete', path: '/api/v1/filters/{id}', tags: ['filters'], security: secured,
     request: { params: id },
     responses: { 204: { description: 'Deleted' } },
+  });
+
+  // --- notes ------------------------------------------------------------
+  // Deux niveaux : le carnet, et la page qui vit dedans. Les listes renvoient
+  // des RÉSUMÉS — une page peut peser plusieurs mégaoctets (images collées en
+  // data URL), les empiler dans une liste rendrait la vue inutilisable.
+
+  r.registerPath({
+    method: 'get', path: '/api/v1/notes/notebooks', tags: ['notes'], security: secured,
+    responses: { 200: { description: 'OK', ...json(z.array(Notebook)) } },
+  });
+  r.registerPath({
+    method: 'post', path: '/api/v1/notes/notebooks', tags: ['notes'], security: secured,
+    request: { body: json(NotebookCreate) },
+    responses: { 201: { description: 'Created', ...json(Notebook) } },
+  });
+  r.registerPath({
+    method: 'patch', path: '/api/v1/notes/notebooks/{id}', tags: ['notes'], security: secured,
+    request: { params: id, body: json(NotebookUpdate) },
+    responses: { 200: { description: 'OK', ...json(Notebook) }, 404: notFound },
+  });
+  r.registerPath({
+    method: 'delete', path: '/api/v1/notes/notebooks/{id}', tags: ['notes'], security: secured,
+    request: { params: id },
+    responses: { 204: { description: 'Deleted' } },
+  });
+
+  r.registerPath({
+    method: 'get', path: '/api/v1/notes/notebooks/{id}/pages', tags: ['notes'], security: secured,
+    summary: 'Pages of a notebook, without their content',
+    request: { params: id },
+    responses: { 200: { description: 'OK', ...json(z.array(NotePageSummary)) }, 404: notFound },
+  });
+  r.registerPath({
+    method: 'post', path: '/api/v1/notes/notebooks/{id}/pages', tags: ['notes'], security: secured,
+    request: { params: id, body: json(PageCreate) },
+    responses: { 201: { description: 'Created', ...json(NotePage) }, 404: notFound },
+  });
+
+  r.registerPath({
+    method: 'get', path: '/api/v1/notes/pages/{id}', tags: ['notes'], security: secured,
+    summary: 'One page, with its content',
+    request: { params: id },
+    responses: { 200: { description: 'OK', ...json(NotePage) }, 404: notFound },
+  });
+  r.registerPath({
+    method: 'patch', path: '/api/v1/notes/pages/{id}', tags: ['notes'], security: secured,
+    request: { params: id, body: json(PageUpdate) },
+    responses: { 200: { description: 'OK', ...json(NotePage) }, 404: notFound },
+  });
+  r.registerPath({
+    method: 'delete', path: '/api/v1/notes/pages/{id}', tags: ['notes'], security: secured,
+    request: { params: id },
+    responses: { 204: { description: 'Deleted' } },
+  });
+  r.registerPath({
+    method: 'post', path: '/api/v1/notes/pages/{id}/duplicate', tags: ['notes'], security: secured,
+    request: { params: id },
+    responses: { 201: { description: 'Created', ...json(NotePage) }, 404: notFound },
+  });
+
+  // Indexation sémantique : `inRag` décide si une page nourrit la recherche.
+  r.registerPath({
+    method: 'post', path: '/api/v1/notes/notebooks/{id}/rag', tags: ['notes'], security: secured,
+    summary: 'Add or remove every page of a notebook from the semantic index',
+    request: { params: id, body: json(NotebookRag) },
+    responses: { 200: { description: 'Pages updated', ...json(NotebookRagResult) }, 404: notFound },
+  });
+  r.registerPath({
+    method: 'post', path: '/api/v1/notes/search', tags: ['notes'], security: secured,
+    summary: 'Semantic search over RAG-enabled pages',
+    request: { body: json(NoteSearch) },
+    responses: { 200: { description: 'OK', ...json(z.array(NotePageHit)) } },
+  });
+
+  // Routes assistées par un modèle. Documentées comme les autres, mais leur
+  // latence et leur coût ne sont pas ceux d'une lecture : le client doit les
+  // traiter comme des actions, pas comme du chargement d'écran.
+  r.registerPath({
+    method: 'post', path: '/api/v1/notes/notebooks/{id}/summarize', tags: ['notes'], security: secured,
+    summary: 'Summarize a whole notebook into a new page (AI)',
+    request: { params: id },
+    responses: { 201: { description: 'Summary page created', ...json(NotePage) }, 404: notFound },
+  });
+  r.registerPath({
+    method: 'post', path: '/api/v1/notes/pages/{id}/extract-tasks', tags: ['notes'], security: secured,
+    summary: 'Propose tasks found in a page (AI, preview only — nothing is created)',
+    request: { params: id },
+    responses: { 200: { description: 'OK', ...json(ExtractedTasks) }, 404: notFound },
+  });
+  r.registerPath({
+    method: 'post', path: '/api/v1/notes/draw/cleanup', tags: ['notes'], security: secured,
+    summary: 'Redraw a rough sketch as a clean SVG (AI)',
+    request: { body: json(DrawCleanup) },
+    responses: { 200: { description: 'OK', ...json(DrawCleanupResult) } },
   });
 
   // --- events -----------------------------------------------------------

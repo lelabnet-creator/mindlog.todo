@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { drawCleanupResultSchema, drawCleanupSchema, drawShapeSchema } from '../domain/note.js';
 import { chatComplete } from '../llm/chat.js';
 import * as aiLog from '../service/ai-log.service.js';
 import { resolveAiConfig } from '../service/ai.service.js';
@@ -7,29 +9,11 @@ import { resolveAiConfig } from '../service/ai.service.js';
 // instruction. The model returns a single self-contained <svg> document which
 // the client sanitizes before rendering.
 
-export interface DrawShape {
-  type: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  stroke?: string;
-  fill?: string;
-  fillStyle?: string;
-  text?: string;
-}
+export type DrawShape = z.infer<typeof drawShapeSchema>;
 
-export interface CleanupDrawingInput {
-  shapes: DrawShape[];
-  /** What to make of the sketch, e.g. "clean schema", "bar chart", "flowchart". */
-  instruction?: string;
-  width: number;
-  height: number;
-}
+export type CleanupDrawingInput = z.infer<typeof drawCleanupSchema>;
 
-export interface CleanupDrawingResult {
-  svg: string;
-}
+export type CleanupDrawingResult = z.infer<typeof drawCleanupResultSchema>;
 
 const SYSTEM =
   'You are a diagramming assistant. You receive a rough sketch as a JSON list of ' +

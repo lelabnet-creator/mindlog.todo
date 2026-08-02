@@ -1,8 +1,11 @@
 import {
   cleanupDrawing,
+  drawCleanupSchema,
   extractTasksFromPage,
   notebookCreateSchema,
+  notebookRagSchema,
   notebookUpdateSchema,
+  noteSearchSchema,
   noteService,
   pageCreateSchema,
   pageUpdateSchema,
@@ -17,11 +20,6 @@ notesRouter.use(requireAuth);
 
 // Semantic search over the user's RAG-enabled note pages (optionally scoped to
 // notebooks). Powers the Notes section of the Search view.
-const noteSearchSchema = z.object({
-  query: z.string().min(1),
-  k: z.coerce.number().int().min(1).max(50).default(10),
-  notebookIds: z.array(z.uuid()).optional(),
-});
 notesRouter.post('/search', async (req, res) => {
   const { query, k, notebookIds } = noteSearchSchema.parse(req.body);
   const scope = notebookIds?.length ? { notebookIds } : undefined;
@@ -29,23 +27,6 @@ notesRouter.post('/search', async (req, res) => {
 });
 
 // AI: redraw a rough canvas sketch (list of primitive shapes) into a clean SVG.
-const drawShapeSchema = z.object({
-  type: z.string(),
-  x: z.number(),
-  y: z.number(),
-  w: z.number(),
-  h: z.number(),
-  stroke: z.string().optional(),
-  fill: z.string().optional(),
-  fillStyle: z.string().optional(),
-  text: z.string().optional(),
-});
-const drawCleanupSchema = z.object({
-  shapes: z.array(drawShapeSchema).min(1),
-  instruction: z.string().max(200).optional(),
-  width: z.number().positive().max(4000),
-  height: z.number().positive().max(4000),
-});
 notesRouter.post('/draw/cleanup', async (req, res) => {
   res.json(await cleanupDrawing(userId(req), drawCleanupSchema.parse(req.body)));
 });
@@ -67,7 +48,7 @@ notesRouter.delete('/notebooks/:id', async (req, res) => {
 
 // Add/remove every page of a notebook to/from the RAG in one go.
 notesRouter.post('/notebooks/:id/rag', async (req, res) => {
-  const { inRag } = z.object({ inRag: z.boolean() }).parse(req.body);
+  const { inRag } = notebookRagSchema.parse(req.body);
   const count = await noteService.setNotebookRag(userId(req), req.params.id!, inRag);
   res.json({ updated: count });
 });

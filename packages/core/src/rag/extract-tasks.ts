@@ -1,4 +1,5 @@
-import { notePageText } from '../domain/note.js';
+import { z } from 'zod';
+import { extractedTasksSchema, notePageText } from '../domain/note.js';
 import { interpolatePrompt } from '../domain/prompt.js';
 import { chatComplete } from '../llm/chat.js';
 import * as aiLog from '../service/ai-log.service.js';
@@ -35,9 +36,7 @@ export function parseTaskLines(text: string): string[] {
     .slice(0, 50);
 }
 
-export interface ExtractTasksResult {
-  tasks: string[];
-}
+export type ExtractTasksResult = z.infer<typeof extractedTasksSchema>;
 
 /**
  * Read a note page and have the LLM propose a list of tasks (preview only — the

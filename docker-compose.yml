@@ -26,16 +26,23 @@ services:
       # Inside the compose network the db is reachable as `db`.
       DATABASE_URL: postgres://mindlog:mindlog@db:5432/mindlog
       PORT: 8080
-      PUBLIC_URL: https://todo.mindlog.localhost
-      WEB_URL: https://todo.mindlog.localhost
-      # "Sign in with mindlog id" — server-to-server OIDC calls (discovery, token,
-      # userinfo) go to https://id.mindlog.localhost (Caddy + mkcert on the host).
+      # L'edge unifié sert le todo sous `/app` et retire ce préfixe : l'API, les
+      # docs, /oauth et /.well-known sont donc tous exposés SOUS /app.
+      PUBLIC_URL: https://todo.mindlog.today.localhost/app
+      WEB_URL: https://todo.mindlog.today.localhost/app
+      # Ces deux URLs portent un chemin : ce ne sont plus des origines valides,
+      # donc la liste CORS par défaut qui en dérive doit être donnée en clair.
+      CORS_ORIGINS: https://todo.mindlog.today.localhost,https://localhost,capacitor://localhost
+      # "Sign in with mindlog id" — les appels serveur-à-serveur OIDC (discovery,
+      # token, userinfo) vont sur https://idp.mindlog.today.localhost (edge + mkcert).
       # Trust the mkcert root CA mounted below so Node's fetch() accepts that cert.
       NODE_EXTRA_CA_CERTS: /etc/ssl/certs/mindlog-rootCA.pem
-    # Resolve id.mindlog.localhost to the host, where the shared dev Caddy
-    # terminates TLS for *.mindlog.localhost on :443.
+    # Résout le domaine de l'IdP vers l'hôte, où la façade SNI écoute sur :443 et
+    # passe le flux à Caddy. Le nom DOIT être celui du certificat mkcert
+    # (*.mindlog.today.localhost) : tout autre SNI fait répondre à Caddy une
+    # alerte TLS 80 « internal error » et le fetch() de l'api échoue en 500.
     extra_hosts:
-      - "id.mindlog.localhost:host-gateway"
+      - "idp.mindlog.today.localhost:host-gateway"
     volumes:
       # Read-only mount of the mkcert root CA (created by scripts/gen-certs.sh).
       - ./certs/rootCA.pem:/etc/ssl/certs/mindlog-rootCA.pem:ro

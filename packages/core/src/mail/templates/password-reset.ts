@@ -10,7 +10,13 @@ export interface PasswordResetEmailInput {
   firstPassword?: boolean;
 }
 
-const BRAND = '#db4c3f';
+/**
+ * Teinte du produit (hue 36, teinte 2 de l'échelle de la suite) — la même que
+ * la vitrine et le client web. C'est la variante SOMBRE de l'ambre : l'e-mail
+ * est sur fond blanc et le bouton porte du texte blanc, l'ambre vif n'y
+ * donnerait que 1,8:1.
+ */
+const BRAND = '#8f621e';
 
 /** Build the password-reset email (MJML source + plain-text fallback). */
 export function passwordResetEmail(input: PasswordResetEmailInput): {

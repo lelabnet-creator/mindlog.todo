@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 /** Karma levels by cumulative points, lowest threshold first. */
 export const KARMA_LEVELS = [
   { name: 'Beginner', min: 0 },
@@ -13,15 +15,16 @@ export const KARMA_LEVELS = [
 /** Points awarded for completing a task, by priority (P1 worth the most). */
 export const KARMA_POINTS_BY_PRIORITY: Record<number, number> = { 1: 8, 2: 6, 3: 4, 4: 2 };
 
-export interface Karma {
-  points: number;
-  level: string;
-  nextLevel: string | null;
-  pointsToNext: number | null;
-  completedToday: number;
-  completedThisWeek: number;
-  streakDays: number;
-}
+export const karmaSchema = z.object({
+  points: z.number().int(),
+  level: z.string(),
+  nextLevel: z.string().nullable(),
+  pointsToNext: z.number().int().nullable(),
+  completedToday: z.number().int(),
+  completedThisWeek: z.number().int(),
+  streakDays: z.number().int(),
+});
+export type Karma = z.infer<typeof karmaSchema>;
 
 interface Level {
   name: string;

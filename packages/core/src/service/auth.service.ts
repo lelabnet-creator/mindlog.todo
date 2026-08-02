@@ -1,3 +1,4 @@
+import type { MindlogIdConnectionStatus } from '../domain/calendar.js';
 import { exchangeGoogleCode, getGoogleAuthUrl } from '../auth/google.js';
 import {
   exchangeMindlogIdCode,
@@ -282,12 +283,6 @@ export async function completeMindlogIdSignup(pendingToken: string, email: strin
 }
 
 // --- mindlog id agenda connection (status / disconnect) ---
-
-export interface MindlogIdConnectionStatus {
-  connected: boolean;
-  /** True when the user granted the optional agenda read scope. */
-  agendaGranted: boolean;
-}
 
 export async function mindlogIdConnectionStatus(userId: string): Promise<MindlogIdConnectionStatus> {
   const conn = await userRepo.getMindlogIdConnection(userId);

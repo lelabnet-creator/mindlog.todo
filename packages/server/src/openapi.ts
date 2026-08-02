@@ -15,6 +15,13 @@ import {
   aiSettingsUpdateSchema,
   aiSettingsViewSchema,
   aiUsageSchema,
+  calendarEventSchema,
+  calendarSourceCreateSchema,
+  calendarSourceSchema,
+  calendarSourceUpdateSchema,
+  dashboardStatsSchema,
+  karmaSchema,
+  mindlogIdConnectionSchema,
   aiCreditsSchema,
   chatProviderSchema,
   chatModelSchema,
@@ -177,6 +184,14 @@ function buildDocument(version: '3.1.0' | '3.0.3') {
   // Le retour de /ai/models est enveloppé : `{ models: [...] }`, pas un tableau
   // nu — la route pourra porter un jour la source ou la fraîcheur de la liste.
   const AiModelList = ref('AiModelList', z.object({ models: z.array(ChatModel) }));
+  const CalendarSource = ref('CalendarSource', calendarSourceSchema);
+  const CalendarEvent = ref('CalendarEvent', calendarEventSchema);
+  const MindlogIdConnection = ref('MindlogIdConnection', mindlogIdConnectionSchema);
+  const Karma = ref('Karma', karmaSchema);
+  // Composé de parties nommées, comme AiSettings : `karma` est le MÊME objet que
+  // celui de /karma, et le contrat doit le dire par un $ref plutôt que d'en
+  // publier une copie anonyme.
+  const DashboardStats = ref('DashboardStats', dashboardStatsSchema.extend({ karma: Karma.nullable() }));
   const User = ref('User', userSchema);
   const ApiKey = ref('ApiKey', apiKeySchema);
   const ApiKeyCreated = ref('ApiKeyCreated', apiKeyCreatedSchema);
@@ -229,6 +244,8 @@ function buildDocument(version: '3.1.0' | '3.0.3') {
   const PromptSave = ref('PromptSaveRequest', promptSaveSchema);
   const AiSettingsUpdate = ref('AiSettingsUpdateRequest', aiSettingsUpdateSchema);
   const AiModelsQuery = ref('AiModelsQueryRequest', aiModelsQuerySchema);
+  const CalendarSourceCreate = ref('CalendarSourceCreateRequest', calendarSourceCreateSchema);
+  const CalendarSourceUpdate = ref('CalendarSourceUpdateRequest', calendarSourceUpdateSchema);
 
   // La clé de prompt est une énumération fermée, pas une chaîne libre : le
   // serveur répond 400 sur toute autre valeur, autant que le contrat le dise.
@@ -670,6 +687,61 @@ function buildDocument(version: '3.1.0' | '3.0.3') {
     description: 'POST rather than GET because the request may carry an API key, which has no place in a URL.',
     request: { body: json(AiModelsQuery) },
     responses: { 200: { description: 'OK', ...json(AiModelList) } },
+  });
+
+  // --- calendar ---------------------------------------------------------
+  // Deux sources d'agenda distinctes : les abonnements iCal de l'utilisateur, et
+  // le compte mindlog id quand il a accordé le droit `agenda`. `/events` les
+  // fusionne — le client n'a pas à savoir d'où vient chaque événement.
+
+  r.registerPath({
+    method: 'get', path: '/api/v1/calendar/mindlog-id', tags: ['calendar'], security: secured,
+    summary: 'Whether the mindlog id account is linked and granted the agenda scope',
+    responses: { 200: { description: 'OK', ...json(MindlogIdConnection) } },
+  });
+  r.registerPath({
+    method: 'delete', path: '/api/v1/calendar/mindlog-id', tags: ['calendar'], security: secured,
+    summary: 'Unlink the mindlog id account',
+    responses: { 204: { description: 'Unlinked' } },
+  });
+  r.registerPath({
+    method: 'get', path: '/api/v1/calendar/sources', tags: ['calendar'], security: secured,
+    responses: { 200: { description: 'OK', ...json(z.array(CalendarSource)) } },
+  });
+  r.registerPath({
+    method: 'post', path: '/api/v1/calendar/sources', tags: ['calendar'], security: secured,
+    summary: 'Subscribe to an iCal feed',
+    request: { body: json(CalendarSourceCreate) },
+    responses: { 201: { description: 'Created', ...json(CalendarSource) } },
+  });
+  r.registerPath({
+    method: 'patch', path: '/api/v1/calendar/sources/{id}', tags: ['calendar'], security: secured,
+    request: { params: id, body: json(CalendarSourceUpdate) },
+    responses: { 200: { description: 'OK', ...json(CalendarSource) }, 404: notFound },
+  });
+  r.registerPath({
+    method: 'delete', path: '/api/v1/calendar/sources/{id}', tags: ['calendar'], security: secured,
+    request: { params: id },
+    responses: { 204: { description: 'Deleted' } },
+  });
+  r.registerPath({
+    method: 'get', path: '/api/v1/calendar/events', tags: ['calendar'], security: secured,
+    summary: 'Events merged from every feed, optionally bounded',
+    request: { query: z.object({ from: z.string().optional(), to: z.string().optional() }) },
+    responses: { 200: { description: 'OK', ...json(z.array(CalendarEvent)) } },
+  });
+
+  // --- karma & dashboard ------------------------------------------------
+
+  r.registerPath({
+    method: 'get', path: '/api/v1/karma', tags: ['stats'], security: secured,
+    summary: 'Points, level, streak',
+    responses: { 200: { description: 'OK', ...json(Karma) } },
+  });
+  r.registerPath({
+    method: 'get', path: '/api/v1/dashboard', tags: ['stats'], security: secured,
+    summary: 'Aggregated task and note counters, plus a 14-day completion trend',
+    responses: { 200: { description: 'OK', ...json(DashboardStats) } },
   });
 
   // --- events -----------------------------------------------------------

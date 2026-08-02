@@ -21,24 +21,37 @@ export const calendarSourceUpdateSchema = z.object({
 });
 export type CalendarSourceUpdateInput = z.infer<typeof calendarSourceUpdateSchema>;
 
-export interface CalendarSource {
-  id: string;
-  userId: string;
-  name: string;
-  url: string;
-  color: string | null;
-  lastSyncedAt: string | null;
-  createdAt: string;
-}
+/**
+ * État du rattachement au compte mindlog id. Vivait dans `auth.service.ts`,
+ * donc hors de portée du document : le contrat ne pouvait pas le décrire.
+ */
+export const mindlogIdConnectionSchema = z.object({
+  connected: z.boolean(),
+  /** True when the user granted the optional agenda read scope. */
+  agendaGranted: z.boolean(),
+});
+export type MindlogIdConnectionStatus = z.infer<typeof mindlogIdConnectionSchema>;
 
-export interface CalendarEvent {
-  uid: string;
-  summary: string;
+export const calendarSourceSchema = z.object({
+  id: z.uuid(),
+  userId: z.uuid(),
+  name: z.string(),
+  url: z.string(),
+  color: z.string().nullable(),
+  lastSyncedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type CalendarSource = z.infer<typeof calendarSourceSchema>;
+
+export const calendarEventSchema = z.object({
+  uid: z.string(),
+  summary: z.string(),
   /** ISO start; for all-day events the time is midnight. */
-  start: string;
-  end: string | null;
-  allDay: boolean;
-}
+  start: z.string(),
+  end: z.string().nullable(),
+  allDay: z.boolean(),
+});
+export type CalendarEvent = z.infer<typeof calendarEventSchema>;
 
 /** Unfold RFC 5545 folded lines (continuations begin with a space or tab). */
 function unfold(text: string): string[] {

@@ -44,7 +44,10 @@ export * from './domain/change.js';
 export * from './domain/version.js';
 export {
   CHAT_MODELS,
+  CHAT_PROVIDER_IDS,
   CHAT_PROVIDERS,
+  chatModelSchema,
+  chatProviderSchema,
   type ChatModel,
   type ChatProvider,
   type ChatProviderId,

@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import type { AiCredits } from './ai-log.js';
-import type { ChatModel, ChatProvider, ChatProviderId } from '../llm/models.js';
+import { aiCreditsSchema } from './ai-log.js';
+import { chatModelSchema, chatProviderSchema, CHAT_PROVIDER_IDS } from '../llm/models.js';
 
 // Self-hosted users PATCH their provider, model (a known id or a free-text
 // custom one), and/or their own API key (write-only).
@@ -19,18 +19,19 @@ export const aiModelsQuerySchema = z.object({
 });
 export type AiModelsQueryInput = z.infer<typeof aiModelsQuerySchema>;
 
-/** What GET /ai/settings returns to the SPA. */
-export interface AiSettingsView {
+/** What GET /ai/settings returns. */
+export const aiSettingsViewSchema = z.object({
   /** Cloud-hosted: shared key + metered credits; user cannot edit AI settings. */
-  cloudHosted: boolean;
-  provider: ChatProviderId;
-  model: string;
+  cloudHosted: z.boolean(),
+  provider: z.enum(CHAT_PROVIDER_IDS),
+  model: z.string(),
   /** Whether a usable key is configured (the key itself is never returned). */
-  hasKey: boolean;
+  hasKey: z.boolean(),
   /** Provider options for the picker. */
-  providers: ChatProvider[];
+  providers: z.array(chatProviderSchema),
   /** Static fallback model suggestions (live models are fetched separately). */
-  models: ChatModel[];
+  models: z.array(chatModelSchema),
   /** Credit balance (cloud-hosted only; null otherwise). */
-  credits: AiCredits | null;
-}
+  credits: aiCreditsSchema.nullable(),
+});
+export type AiSettingsView = z.infer<typeof aiSettingsViewSchema>;

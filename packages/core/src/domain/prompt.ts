@@ -7,12 +7,13 @@ import { z } from 'zod';
 export const PROMPT_KEYS = ['ask', 'extract_tasks', 'summarize'] as const;
 export type PromptKey = (typeof PROMPT_KEYS)[number];
 
-export interface PromptTemplate {
+export const promptTemplateSchema = z.object({
   /** The system prompt (role / behaviour). */
-  system: string;
+  system: z.string(),
   /** The user message template, with {placeholder} tokens filled at call time. */
-  user: string;
-}
+  user: z.string(),
+});
+export type PromptTemplate = z.infer<typeof promptTemplateSchema>;
 
 /** Placeholders available in each prompt's USER template (for the editor's hints). */
 export const PROMPT_PLACEHOLDERS: Record<PromptKey, string[]> = {
@@ -79,8 +80,9 @@ export const promptSaveSchema = z.object({
 export type PromptSaveInput = z.infer<typeof promptSaveSchema>;
 
 /** A prompt as shown in Settings: effective value + whether it overrides the seed. */
-export interface PromptView extends PromptTemplate {
-  key: PromptKey;
-  isCustom: boolean;
-  placeholders: string[];
-}
+export const promptViewSchema = promptTemplateSchema.extend({
+  key: z.enum(PROMPT_KEYS),
+  isCustom: z.boolean(),
+  placeholders: z.array(z.string()),
+});
+export type PromptView = z.infer<typeof promptViewSchema>;

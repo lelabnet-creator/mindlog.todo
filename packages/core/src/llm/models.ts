@@ -1,14 +1,17 @@
+import { z } from 'zod';
 // Chat LLM providers + a small fallback catalog. The settings UI fetches the
 // live model list from each provider's API (see list-models.ts) and also allows
 // a free-text custom model id; this catalog is only a sensible default/offline
 // fallback.
 
-export type ChatProviderId = 'anthropic' | 'openai' | 'mistral';
+export const CHAT_PROVIDER_IDS = ['anthropic', 'openai', 'mistral'] as const;
+export type ChatProviderId = (typeof CHAT_PROVIDER_IDS)[number];
 
-export interface ChatProvider {
-  id: ChatProviderId;
-  label: string;
-}
+export const chatProviderSchema = z.object({
+  id: z.enum(CHAT_PROVIDER_IDS),
+  label: z.string(),
+});
+export type ChatProvider = z.infer<typeof chatProviderSchema>;
 
 export const CHAT_PROVIDERS: ChatProvider[] = [
   { id: 'anthropic', label: 'Anthropic' },
@@ -16,11 +19,12 @@ export const CHAT_PROVIDERS: ChatProvider[] = [
   { id: 'mistral', label: 'Mistral' },
 ];
 
-export interface ChatModel {
-  id: string;
-  provider: ChatProviderId;
-  label: string;
-}
+export const chatModelSchema = z.object({
+  id: z.string(),
+  provider: z.enum(CHAT_PROVIDER_IDS),
+  label: z.string(),
+});
+export type ChatModel = z.infer<typeof chatModelSchema>;
 
 /** Fallback suggestions per provider (used until live models are fetched). */
 export const CHAT_MODELS: ChatModel[] = [

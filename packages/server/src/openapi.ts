@@ -10,8 +10,18 @@ import {
   filterSchema,
   filterUpdateSchema,
   forgotPasswordSchema,
+  aiLogSchema,
+  aiModelsQuerySchema,
+  aiSettingsUpdateSchema,
+  aiSettingsViewSchema,
+  aiUsageSchema,
+  chatModelSchema,
   drawCleanupResultSchema,
+  PROMPT_KEYS,
+  promptSaveSchema,
+  promptViewSchema,
   drawCleanupSchema,
+  drawShapeSchema,
   extractedTasksSchema,
   notebookCreateSchema,
   notebookRagResultSchema,
@@ -147,6 +157,13 @@ function buildDocument(version: '3.1.0' | '3.0.3') {
   const NotebookRagResult = ref('NotebookRagResult', notebookRagResultSchema);
   const ExtractedTasks = ref('ExtractedTasks', extractedTasksSchema);
   const DrawCleanupResult = ref('DrawCleanupResult', drawCleanupResultSchema);
+  const PromptView = ref('PromptView', promptViewSchema);
+  const AiUsage = ref('AiUsage', aiUsageSchema);
+  const AiLog = ref('AiLog', aiLogSchema);
+  const AiSettings = ref('AiSettings', aiSettingsViewSchema);
+  // Le retour de /ai/models est enveloppé : `{ models: [...] }`, pas un tableau
+  // nu — la route pourra porter un jour la source ou la fraîcheur de la liste.
+  const AiModelList = ref('AiModelList', z.object({ models: z.array(ref('ChatModel', chatModelSchema)) }));
   const User = ref('User', userSchema);
   const ApiKey = ref('ApiKey', apiKeySchema);
   const ApiKeyCreated = ref('ApiKeyCreated', apiKeyCreatedSchema);
@@ -189,8 +206,20 @@ function buildDocument(version: '3.1.0' | '3.0.3') {
   const NotebookRag = ref('NotebookRagRequest', notebookRagSchema);
   const PageCreate = ref('PageCreateRequest', pageCreateSchema);
   const PageUpdate = ref('PageUpdateRequest', pageUpdateSchema);
-  const DrawCleanup = ref('DrawCleanupRequest', drawCleanupSchema);
+  // La forme du croquis est nommée AVANT d'être composée : sans ça le
+  // générateur baptise l'élément du tableau d'après le chemin
+  // (`DrawCleanupRequestShapesInner`), et chaque client hérite d'une classe que
+  // personne n'aurait choisi d'écrire.
+  const DrawShape = ref('DrawShape', drawShapeSchema);
+  const DrawCleanup = ref('DrawCleanupRequest', drawCleanupSchema.extend({ shapes: z.array(DrawShape).min(1) }));
   const NoteSearch = ref('NoteSearchRequest', noteSearchDocSchema);
+  const PromptSave = ref('PromptSaveRequest', promptSaveSchema);
+  const AiSettingsUpdate = ref('AiSettingsUpdateRequest', aiSettingsUpdateSchema);
+  const AiModelsQuery = ref('AiModelsQueryRequest', aiModelsQuerySchema);
+
+  // La clé de prompt est une énumération fermée, pas une chaîne libre : le
+  // serveur répond 400 sur toute autre valeur, autant que le contrat le dise.
+  const promptKeyParam = z.object({ key: z.enum(PROMPT_KEYS) });
 
   const id = z.object({ id: z.string() });
   const notFound = { description: 'Not found', ...json(errorSchema) };
@@ -555,6 +584,79 @@ function buildDocument(version: '3.1.0' | '3.0.3') {
     summary: 'Redraw a rough sketch as a clean SVG (AI)',
     request: { body: json(DrawCleanup) },
     responses: { 200: { description: 'OK', ...json(DrawCleanupResult) } },
+  });
+
+  // --- ai ---------------------------------------------------------------
+  // Trois sujets sous un même préfixe : les gabarits de prompts (éditables par
+  // l'utilisateur), la consommation, et les réglages de fournisseur. La clé
+  // d'API n'est JAMAIS relue — elle s'écrit et se supprime, `hasKey` dit
+  // seulement si elle existe.
+
+  r.registerPath({
+    method: 'get', path: '/api/v1/ai/prompts', tags: ['ai'], security: secured,
+    summary: 'Effective prompts, with whether each overrides the seed',
+    responses: { 200: { description: 'OK', ...json(z.array(PromptView)) } },
+  });
+  r.registerPath({
+    method: 'put', path: '/api/v1/ai/prompts/{key}', tags: ['ai'], security: secured,
+    request: { params: promptKeyParam, body: json(PromptSave) },
+    responses: { 200: { description: 'OK', ...json(PromptView) }, 400: { description: 'Unknown prompt key', ...json(errorSchema) } },
+  });
+  r.registerPath({
+    method: 'delete', path: '/api/v1/ai/prompts/{key}', tags: ['ai'], security: secured,
+    summary: 'Drop the override and fall back to the seed value',
+    request: { params: promptKeyParam },
+    responses: { 200: { description: 'OK', ...json(PromptView) }, 400: { description: 'Unknown prompt key', ...json(errorSchema) } },
+  });
+  r.registerPath({
+    method: 'post', path: '/api/v1/ai/prompts/reset', tags: ['ai'], security: secured,
+    summary: 'Drop every override at once',
+    responses: { 200: { description: 'OK', ...json(z.array(PromptView)) } },
+  });
+  r.registerPath({
+    method: 'post', path: '/api/v1/ai/prompts/seed/export', tags: ['ai'], security: secured,
+    summary: 'Write the current prompts to the server-side seed file',
+    responses: { 200: { description: 'OK', ...json(z.array(PromptView)) } },
+  });
+  r.registerPath({
+    method: 'post', path: '/api/v1/ai/prompts/seed/import', tags: ['ai'], security: secured,
+    summary: 'Reload the prompts from the server-side seed file',
+    responses: { 200: { description: 'OK', ...json(z.array(PromptView)) } },
+  });
+
+  r.registerPath({
+    method: 'get', path: '/api/v1/ai/usage', tags: ['ai'], security: secured,
+    responses: { 200: { description: 'OK', ...json(AiUsage) } },
+  });
+  r.registerPath({
+    method: 'get', path: '/api/v1/ai/logs', tags: ['ai'], security: secured,
+    summary: 'Recent generative calls, most recent first',
+    request: { query: z.object({ limit: z.number().int().min(1).max(200).optional().describe('Default 50, max 200.') }) },
+    responses: { 200: { description: 'OK', ...json(z.array(AiLog)) } },
+  });
+
+  r.registerPath({
+    method: 'get', path: '/api/v1/ai/settings', tags: ['ai'], security: secured,
+    responses: { 200: { description: 'OK', ...json(AiSettings) } },
+  });
+  r.registerPath({
+    method: 'patch', path: '/api/v1/ai/settings', tags: ['ai'], security: secured,
+    summary: 'Set provider, model, and/or the user\'s own API key',
+    description: 'The key is write-only: it never appears in a response, `hasKey` reports its presence.',
+    request: { body: json(AiSettingsUpdate) },
+    responses: { 200: { description: 'OK', ...json(AiSettings) } },
+  });
+  r.registerPath({
+    method: 'delete', path: '/api/v1/ai/settings/key', tags: ['ai'], security: secured,
+    summary: 'Forget the stored API key',
+    responses: { 200: { description: 'OK', ...json(AiSettings) } },
+  });
+  r.registerPath({
+    method: 'post', path: '/api/v1/ai/models', tags: ['ai'], security: secured,
+    summary: 'List a provider\'s models live',
+    description: 'POST rather than GET because the request may carry an API key, which has no place in a URL.',
+    request: { body: json(AiModelsQuery) },
+    responses: { 200: { description: 'OK', ...json(AiModelList) } },
   });
 
   // --- events -----------------------------------------------------------

@@ -69,8 +69,16 @@ async function discover(): Promise<OidcDiscovery> {
   return discoveryCache;
 }
 
-/** Build the provider authorization URL (Authorization Code flow). */
-export async function getMindlogIdAuthUrl(state: string): Promise<string> {
+/**
+ * Build the provider authorization URL (Authorization Code flow).
+ *
+ * `create`: the user pressed "create an account" rather than "sign in". We pass
+ * `prompt=create` (OIDC Initiating User Registration) so mindlog id opens its
+ * signup screen straight away instead of a consent screen the user would have
+ * to read through to find the "no account yet?" link. mindlog id ignores the
+ * hint when a session is already open, and drops it when resuming the consent.
+ */
+export async function getMindlogIdAuthUrl(state: string, opts?: { create?: boolean }): Promise<string> {
   const { authorization_endpoint } = await discover();
   const params = new URLSearchParams({
     client_id: config.mindlogId.clientId,
@@ -81,6 +89,7 @@ export async function getMindlogIdAuthUrl(state: string): Promise<string> {
     scope: 'openid email profile mindlog:agenda mindlog:relations',
     state,
   });
+  if (opts?.create) params.set('prompt', 'create');
   return `${authorization_endpoint}?${params.toString()}`;
 }
 

@@ -205,8 +205,8 @@ export async function loginWithGoogle(code: string): Promise<AuthResult> {
 
 // --- mindlog id (central OIDC provider) ---
 
-export function mindlogIdAuthUrl(state: string): Promise<string> {
-  return getMindlogIdAuthUrl(state);
+export function mindlogIdAuthUrl(state: string, opts?: { create?: boolean }): Promise<string> {
+  return getMindlogIdAuthUrl(state, opts);
 }
 
 /**

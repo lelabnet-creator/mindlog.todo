@@ -53,6 +53,21 @@ export const config = {
   appBuildDate: env('APP_BUILD_DATE', ''),
   publicUrl: env('PUBLIC_URL', 'http://localhost:8080'),
   webUrl: env('WEB_URL', 'http://localhost:5173'),
+  // Where an OAuth round trip returns to when a *native* client started it. It
+  // is read from configuration and never from a request parameter — a
+  // caller-supplied return address would be an open redirect that hands out
+  // session tokens.
+  //
+  // The scheme IS the Android applicationId — the native client's manifest
+  // declares `${authScheme}://auth/callback` and its convention plugin sets
+  // `authScheme = applicationId` (clients/android-native). That id is
+  // `today.mindlog.todo.native` in prod and `today.mindlog.todo.native.testing`
+  // outside it. Careful: the scheme takes `defaultConfig.applicationId`, so it
+  // does NOT carry the build type's `.debug` suffix — a debug qualif install is
+  // packaged as `…native.testing.debug` but still answers on
+  // `today.mindlog.todo.native.testing://`. Prod is the default below; every
+  // other deployment sets NATIVE_CALLBACK_URL (gra01 → `.testing`).
+  nativeCallbackUrl: env('NATIVE_CALLBACK_URL', 'today.mindlog.todo.native://auth/callback'),
   // Comma-separated browser origins allowed to read API responses. Empty = the
   // built-in list (see corsOptions in rest/app.ts); the literal `*` restores the
   // previous allow-everything behaviour as an escape hatch.

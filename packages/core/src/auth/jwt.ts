@@ -16,6 +16,46 @@ export function verifyAccessToken(token: string): string | null {
   }
 }
 
+// --- OAuth `state` ---------------------------------------------------------
+
+// The `state` parameter is the only thing that survives the whole round trip
+// through an external identity provider: the `redirect_uri` we register with it
+// is fixed, so the callback always lands back here. Signing it therefore does
+// two jobs at once — it verifies the callback was one we started (the value was
+// previously generated and then never checked), and it carries which kind of
+// client is waiting, so the callback knows whether to hand the tokens to the
+// web app or to a native one.
+const OAUTH_STATE_TTL: jwt.SignOptions['expiresIn'] = '10m';
+
+export type OAuthClientKind = 'web' | 'native';
+
+export interface OAuthState {
+  nonce: string;
+  client: OAuthClientKind;
+}
+
+export function signOAuthState(state: OAuthState): string {
+  return jwt.sign(
+    { nonce: state.nonce, client: state.client, purpose: 'oauth-state' },
+    config.jwtSecret,
+    { expiresIn: OAUTH_STATE_TTL },
+  );
+}
+
+export function verifyOAuthState(token: string): OAuthState | null {
+  try {
+    const d = jwt.verify(token, config.jwtSecret) as {
+      nonce?: string;
+      client?: string;
+      purpose?: string;
+    };
+    if (d.purpose !== 'oauth-state' || !d.nonce) return null;
+    return { nonce: d.nonce, client: d.client === 'native' ? 'native' : 'web' };
+  } catch {
+    return null;
+  }
+}
+
 // Short-lived token carrying a mindlog-id identity (sub + name) between the OAuth
 // callback and the "enter your email" step, when the IdP returned no email. It
 // also carries the OAuth tokens + granted scope so the agenda connection can be

@@ -20,6 +20,10 @@ import {
   calendarSourceSchema,
   calendarSourceUpdateSchema,
   dashboardStatsSchema,
+  dashboardNoteStatsSchema,
+  dashboardPriorityCountsSchema,
+  dashboardTaskStatsSchema,
+  dashboardTrendPointSchema,
   karmaSchema,
   mindlogIdConnectionSchema,
   aiCreditsSchema,
@@ -66,6 +70,8 @@ import {
   taskUpdateSchema,
   userSchema,
   versionInfoSchema,
+  authProvidersSchema,
+  askNoteSourceSchema,
   TASK_STATUSES,
 } from '@mindlog/core';
 import {
@@ -188,10 +194,24 @@ function buildDocument(version: '3.1.0' | '3.0.3') {
   const CalendarEvent = ref('CalendarEvent', calendarEventSchema);
   const MindlogIdConnection = ref('MindlogIdConnection', mindlogIdConnectionSchema);
   const Karma = ref('Karma', karmaSchema);
-  // Composé de parties nommées, comme AiSettings : `karma` est le MÊME objet que
-  // celui de /karma, et le contrat doit le dire par un $ref plutôt que d'en
-  // publier une copie anonyme.
-  const DashboardStats = ref('DashboardStats', dashboardStatsSchema.extend({ karma: Karma.nullable() }));
+  // Chaque bloc imbriqué est nommé AVANT d'être composé. Nommer le schéma dans
+  // le domaine ne suffit pas : tant qu'il n'est pas passé par `ref()`, il reste
+  // inline dans le document et le générateur le baptise d'après le chemin —
+  // `DashboardStatsTasksByPriority`, `DashboardStatsCompletedTrendInner`. Le
+  // piège est invisible dans les composants du document, il n'apparaît que dans
+  // le code généré.
+  const DashboardPriorityCounts = ref('DashboardPriorityCounts', dashboardPriorityCountsSchema);
+  const DashboardTaskStats = ref('DashboardTaskStats', dashboardTaskStatsSchema.extend({
+    byPriority: DashboardPriorityCounts,
+  }));
+  const DashboardNoteStats = ref('DashboardNoteStats', dashboardNoteStatsSchema);
+  const DashboardTrendPoint = ref('DashboardTrendPoint', dashboardTrendPointSchema);
+  const DashboardStats = ref('DashboardStats', dashboardStatsSchema.extend({
+    tasks: DashboardTaskStats,
+    notes: DashboardNoteStats,
+    completedTrend: z.array(DashboardTrendPoint),
+    karma: Karma.nullable(),
+  }));
   const User = ref('User', userSchema);
   const ApiKey = ref('ApiKey', apiKeySchema);
   const ApiKeyCreated = ref('ApiKeyCreated', apiKeyCreatedSchema);
@@ -201,9 +221,14 @@ function buildDocument(version: '3.1.0' | '3.0.3') {
   // as-is inlines a second, anonymous copy of User into the document, and code
   // generators dutifully emit an `AuthResultUser` class beside `User`.
   const AuthResult = ref('AuthResult', authTokensSchema.extend({ user: User }));
-  const AskResult = ref('AskResult', taskAskResultSchema.extend({ sources: z.array(Task) }));
+  const AskNoteSource = ref('AskNoteSource', askNoteSourceSchema);
+  const AskResult = ref('AskResult', taskAskResultSchema.extend({
+    sources: z.array(Task),
+    noteSources: z.array(AskNoteSource).optional(),
+  }));
   const ChangeEvent = ref('ChangeEvent', changeEventSchema);
-  const VersionInfo = ref('VersionInfo', versionInfoSchema);
+  const AuthProviders = ref('AuthProviders', authProvidersSchema);
+  const VersionInfo = ref('VersionInfo', versionInfoSchema.extend({ authProviders: AuthProviders }));
 
   // Request bodies are named too. Left anonymous they are still *correct*, but
   // generators fall back to the path — `ApiV1AuthLoginPostRequest` — and every

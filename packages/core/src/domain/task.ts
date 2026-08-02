@@ -152,13 +152,18 @@ export interface TaskTree extends Task {
 export const taskSearchHitSchema = taskSchema.extend({ score: z.number() });
 export type TaskSearchHit = z.infer<typeof taskSearchHitSchema>;
 
+/** Référence courte vers une page de notes cited par une réponse. */
+export const askNoteSourceSchema = z.object({
+  id: z.uuid(),
+  title: z.string(),
+  notebookId: z.uuid(),
+});
+
 export const taskAskResultSchema = z.object({
   answer: z.string(),
   sources: z.array(taskSchema),
   /** RAG-enabled note pages that informed the answer. */
-  noteSources: z
-    .array(z.object({ id: z.uuid(), title: z.string(), notebookId: z.uuid() }))
-    .optional(),
+  noteSources: z.array(askNoteSourceSchema).optional(),
 });
 export type TaskAskResult = z.infer<typeof taskAskResultSchema>;
 

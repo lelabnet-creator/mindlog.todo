@@ -3,6 +3,13 @@ import { karmaSchema } from './karma.js';
 
 // Les blocs sont nommés séparément : imbriqués anonymement, ils ressortiraient
 // du générateur en `DashboardStatsTasksInner` et consorts.
+export const dashboardPriorityCountsSchema = z.object({
+  p1: z.number().int(),
+  p2: z.number().int(),
+  p3: z.number().int(),
+  p4: z.number().int(),
+});
+
 export const dashboardTaskStatsSchema = z.object({
   total: z.number().int(),
   active: z.number().int(),
@@ -12,12 +19,7 @@ export const dashboardTaskStatsSchema = z.object({
   completedThisWeek: z.number().int(),
   /** 0..100, completed / total */
   completionRate: z.number(),
-  byPriority: z.object({
-    p1: z.number().int(),
-    p2: z.number().int(),
-    p3: z.number().int(),
-    p4: z.number().int(),
-  }),
+  byPriority: dashboardPriorityCountsSchema,
 });
 
 export const dashboardNoteStatsSchema = z.object({

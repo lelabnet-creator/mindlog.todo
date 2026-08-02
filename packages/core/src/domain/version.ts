@@ -8,13 +8,15 @@ import { z } from 'zod';
  * is worse than not offering it, since Google / mindlog id answer 503 and
  * password reset answers 202 without ever sending anything.
  */
+export const authProvidersSchema = z.object({
+  mindlogId: z.boolean(),
+  google: z.boolean(),
+  passwordReset: z.boolean(),
+});
+
 export const versionInfoSchema = z.object({
   version: z.string(),
   buildDate: z.string(),
-  authProviders: z.object({
-    mindlogId: z.boolean(),
-    google: z.boolean(),
-    passwordReset: z.boolean(),
-  }),
+  authProviders: authProvidersSchema,
 });
 export type VersionInfo = z.infer<typeof versionInfoSchema>;

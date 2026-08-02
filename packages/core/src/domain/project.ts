@@ -38,17 +38,19 @@ export const projectListQuerySchema = z.object({
 });
 export type ProjectListQuery = z.infer<typeof projectListQuerySchema>;
 
-export interface Project {
-  id: string;
-  userId: string;
-  name: string;
-  color: string | null;
-  parentId: string | null;
-  isInbox: boolean;
-  isFavorite: boolean;
-  viewMode: ProjectViewMode;
-  position: number;
-  archivedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+/** Wire shape of a project. Schema-first so OpenAPI is generated, never retyped. */
+export const projectSchema = z.object({
+  id: z.uuid(),
+  userId: z.uuid(),
+  name: z.string(),
+  color: z.string().nullable(),
+  parentId: z.uuid().nullable(),
+  isInbox: z.boolean(),
+  isFavorite: z.boolean(),
+  viewMode: z.enum(PROJECT_VIEW_MODES),
+  position: z.number().int(),
+  archivedAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type Project = z.infer<typeof projectSchema>;

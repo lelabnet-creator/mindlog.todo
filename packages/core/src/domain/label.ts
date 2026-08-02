@@ -18,12 +18,14 @@ export const labelUpdateSchema = z.object({
 });
 export type LabelUpdateInput = z.infer<typeof labelUpdateSchema>;
 
-export interface Label {
-  id: string;
-  userId: string;
-  name: string;
-  color: string | null;
-  isFavorite: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+/** Wire shape of a label. Schema-first so OpenAPI is generated, never retyped. */
+export const labelSchema = z.object({
+  id: z.uuid(),
+  userId: z.uuid(),
+  name: z.string(),
+  color: z.string().nullable(),
+  isFavorite: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type Label = z.infer<typeof labelSchema>;

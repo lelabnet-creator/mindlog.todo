@@ -13,11 +13,13 @@ export const sectionUpdateSchema = z.object({
 });
 export type SectionUpdateInput = z.infer<typeof sectionUpdateSchema>;
 
-export interface Section {
-  id: string;
-  projectId: string;
-  name: string;
-  position: number;
-  createdAt: string;
-  updatedAt: string;
-}
+/** Wire shape of a section. Schema-first so OpenAPI is generated, never retyped. */
+export const sectionSchema = z.object({
+  id: z.uuid(),
+  projectId: z.uuid(),
+  name: z.string(),
+  position: z.number().int(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type Section = z.infer<typeof sectionSchema>;

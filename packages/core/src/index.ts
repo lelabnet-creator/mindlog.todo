@@ -40,6 +40,8 @@ export * from './domain/storage.js';
 export * from './domain/prompt.js';
 export * from './domain/karma.js';
 export * from './domain/user.js';
+export * from './domain/change.js';
+export * from './domain/version.js';
 export {
   CHAT_MODELS,
   CHAT_PROVIDERS,
@@ -53,7 +55,14 @@ export { migrate } from './db/migrate.js';
 export { getPool, closePool } from './db/pool.js';
 
 // Auth primitives used by the server's middleware
-export { signAccessToken, verifyAccessToken } from './auth/jwt.js';
+export {
+  signAccessToken,
+  verifyAccessToken,
+  signOAuthState,
+  verifyOAuthState,
+  type OAuthState,
+  type OAuthClientKind,
+} from './auth/jwt.js';
 
 // Embeddings (RAG)
 export { getEmbeddingProvider, embedOne, type EmbeddingProvider } from './embeddings/provider.js';
@@ -89,4 +98,4 @@ export {
 } from './rag/cleanup-drawing.js';
 
 // Change bus — REST & MCP write paths emit here; the SSE endpoint subscribes.
-export { emitChange, subscribeChanges, type ChangeEvent, type ChangeEntity } from './service/changes.js';
+export { emitChange, subscribeChanges } from './service/changes.js';

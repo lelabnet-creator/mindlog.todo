@@ -1,4 +1,11 @@
-import { config, getPool, googleEnabled, mailEnabled, mindlogIdEnabled } from '@mindlog/core';
+import {
+  config,
+  getPool,
+  googleEnabled,
+  mailEnabled,
+  mindlogIdEnabled,
+  type VersionInfo,
+} from '@mindlog/core';
 import cors from 'cors';
 import express, { type Express } from 'express';
 import swaggerUi from 'swagger-ui-express';
@@ -6,7 +13,7 @@ import { mcpHttpHandler } from '../mcp/http.js';
 import { authenticate } from '../middleware/auth.js';
 import { errorHandler } from '../middleware/errors.js';
 import type { MindlogPlugin } from '../plugin.js';
-import { getOpenApiDocument } from '../openapi.js';
+import { getOpenApiDocument, getOpenApiDocumentV30 } from '../openapi.js';
 import { accountRouter } from './account.routes.js';
 import { authRouter } from './auth.routes.js';
 import { aiRouter } from './ai.routes.js';
@@ -90,6 +97,11 @@ export function createApp(plugins: MindlogPlugin[] = []): Express {
   app.get('/openapi.json', (_req, res) => res.json(openapi));
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapi));
 
+  // Same contract as 3.0.3, for code generators: 3.1 writes a nullable string as
+  // `type: ["string","null"]`, which most of them read as plain non-null string.
+  const openapi30 = getOpenApiDocumentV30();
+  app.get('/openapi-3.0.json', (_req, res) => res.json(openapi30));
+
   // MCP Streamable HTTP endpoint (auth handled inside the handler).
   const mcp = mcpHttpHandler(plugins);
   app.post('/mcp', mcp);
@@ -104,8 +116,8 @@ export function createApp(plugins: MindlogPlugin[] = []): Express {
   // so the login page can hide the others. Offering an unconfigured one is worse
   // than not offering it at all: Google / mindlog id answer 503, and password
   // reset answers 202 but never sends anything — a silent dead end.
-  app.get('/api/v1/version', (_req, res) =>
-    res.json({
+  app.get('/api/v1/version', (_req, res) => {
+    const body: VersionInfo = {
       version: config.appVersion,
       buildDate: config.appBuildDate,
       authProviders: {
@@ -113,8 +125,9 @@ export function createApp(plugins: MindlogPlugin[] = []): Express {
         google: googleEnabled(),
         passwordReset: mailEnabled(),
       },
-    }),
-  );
+    };
+    res.json(body);
+  });
 
   // REST API. `authenticate` only populates req.userId; routers enforce auth.
   app.use('/api/v1', authenticate);

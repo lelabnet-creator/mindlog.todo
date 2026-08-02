@@ -1,17 +1,14 @@
 import { EventEmitter } from 'node:events';
 
+import type { ChangeEvent } from '../domain/change.js';
+
 // In-process change bus. Service write functions emit a lightweight event after a
 // successful mutation; the server's SSE endpoint subscribes per user and relays
 // it to connected web clients so the UI can refresh — including changes driven by
 // the MCP server, since REST and MCP share these same service functions.
-
-export type ChangeEntity = 'task' | 'project' | 'section' | 'label' | 'filter';
-
-export interface ChangeEvent {
-  entity: ChangeEntity;
-  action: 'create' | 'update' | 'delete';
-  id?: string;
-}
+//
+// The event shape lives in `domain/change.ts` as a schema, so the SSE payload is
+// documented by the OpenAPI document rather than described twice.
 
 // One emitter keyed by userId. No cap on listeners — each SSE connection adds one.
 const emitter = new EventEmitter();

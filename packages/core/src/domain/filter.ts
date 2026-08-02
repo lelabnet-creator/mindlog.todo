@@ -20,13 +20,21 @@ export const filterUpdateSchema = z.object({
 });
 export type FilterUpdateInput = z.infer<typeof filterUpdateSchema>;
 
-export interface Filter {
-  id: string;
-  userId: string;
-  name: string;
-  query: string;
-  color: string | null;
-  position: number;
-  createdAt: string;
-  updatedAt: string;
-}
+/**
+ * Forme renvoyée par l'API. Schéma Zod plutôt qu'interface, comme `projectSchema`
+ * ou `labelSchema` : c'est lui que le document OpenAPI référence, et donc lui qui
+ * fait naître les DTO des clients générés. Une interface ne peut pas être
+ * publiée dans le contrat, et un filtre décrit à la main d'un côté dérive de
+ * l'autre sans qu'aucun test n'échoue.
+ */
+export const filterSchema = z.object({
+  id: z.uuid(),
+  userId: z.uuid(),
+  name: z.string(),
+  query: z.string(),
+  color: z.string().nullable(),
+  position: z.number().int(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type Filter = z.infer<typeof filterSchema>;

@@ -44,15 +44,17 @@ export const completeMindlogIdSchema = z.object({
 });
 export type CompleteMindlogIdInput = z.infer<typeof completeMindlogIdSchema>;
 
-export interface User {
-  id: string;
-  email: string;
-  displayName: string | null;
-  avatarUrl: string | null;
-  googleSub: string | null;
-  mindlogIdSub: string | null;
-  createdAt: string;
-}
+/** Wire shape of a user. Schema-first so OpenAPI is generated, never retyped. */
+export const userSchema = z.object({
+  id: z.uuid(),
+  email: z.string(),
+  displayName: z.string().nullable(),
+  avatarUrl: z.string().nullable(),
+  googleSub: z.string().nullable(),
+  mindlogIdSub: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type User = z.infer<typeof userSchema>;
 
 // Local profile edits (display name + avatar). Avatar accepts an http(s) URL or
 // a small data: URL (local upload), capped to keep the users row reasonable.
@@ -69,13 +71,14 @@ export const profileUpdateSchema = z.object({
 });
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
 
-export interface ApiKey {
-  id: string;
-  name: string | null;
-  prefix: string;
-  createdAt: string;
-  lastUsedAt: string | null;
-}
+export const apiKeySchema = z.object({
+  id: z.uuid(),
+  name: z.string().nullable(),
+  prefix: z.string(),
+  createdAt: z.string(),
+  lastUsedAt: z.string().nullable(),
+});
+export type ApiKey = z.infer<typeof apiKeySchema>;
 
 /**
  * Wire shape of POST /api-keys. The secret is returned exactly once, at
@@ -86,16 +89,16 @@ export interface ApiKey {
  * present when it never is. The web client used to declare it that way, which
  * is how it type-checked against a shape core never described.
  */
-export interface ApiKeyCreated extends ApiKey {
-  secret: string;
-}
+export const apiKeyCreatedSchema = apiKeySchema.extend({ secret: z.string() });
+export type ApiKeyCreated = z.infer<typeof apiKeyCreatedSchema>;
 
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-}
+export const authTokensSchema = z.object({
+  accessToken: z.string(),
+  refreshToken: z.string(),
+  /** Access-token lifetime in seconds. */
+  expiresIn: z.number().int(),
+});
+export type AuthTokens = z.infer<typeof authTokensSchema>;
 
-export interface AuthResult extends AuthTokens {
-  user: User;
-}
+export const authResultSchema = authTokensSchema.extend({ user: userSchema });
+export type AuthResult = z.infer<typeof authResultSchema>;

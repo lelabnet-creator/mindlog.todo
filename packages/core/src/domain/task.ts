@@ -111,44 +111,56 @@ export const taskAskSchema = z.object({
 });
 export type TaskAskInput = z.infer<typeof taskAskSchema>;
 
-export interface Task {
-  id: string;
-  userId: string;
-  parentId: string | null;
-  projectId: string | null;
-  sectionId: string | null;
-  title: string;
-  description: string | null;
-  assignee: string | null;
-  dueDate: string | null;
-  deadline: string | null;
-  durationMinutes: number | null;
-  recurrence: string | null;
-  status: TaskStatus;
-  priority: number;
-  progress: number;
-  position: number;
-  labelIds: string[];
-  completedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+/**
+ * Wire shape of a task, as every client receives it.
+ *
+ * Declared as a schema rather than an interface so the OpenAPI document can be
+ * generated from it instead of re-describing it by hand — a hand-written copy
+ * drifts silently, and a client generated from that copy inherits the drift.
+ */
+export const taskSchema = z.object({
+  id: z.uuid(),
+  userId: z.uuid(),
+  parentId: z.uuid().nullable(),
+  projectId: z.uuid().nullable(),
+  sectionId: z.uuid().nullable(),
+  title: z.string(),
+  description: z.string().nullable(),
+  assignee: z.string().nullable(),
+  /** ISO 8601 instant. */
+  dueDate: z.string().nullable(),
+  /** YYYY-MM-DD, no time component. */
+  deadline: z.string().nullable(),
+  durationMinutes: z.number().int().nullable(),
+  recurrence: z.string().nullable(),
+  status: z.enum(TASK_STATUSES),
+  priority: z.number().int().min(TASK_PRIORITY_MIN).max(TASK_PRIORITY_MAX),
+  progress: z.number().int(),
+  position: z.number().int(),
+  labelIds: z.array(z.uuid()),
+  completedAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type Task = z.infer<typeof taskSchema>;
 
 /** A task with its nested sub-tasks (used by `tree=true` listings). */
 export interface TaskTree extends Task {
   children: TaskTree[];
 }
 
-export interface TaskSearchHit extends Task {
-  score: number;
-}
+export const taskSearchHitSchema = taskSchema.extend({ score: z.number() });
+export type TaskSearchHit = z.infer<typeof taskSearchHitSchema>;
 
-export interface TaskAskResult {
-  answer: string;
-  sources: Task[];
+export const taskAskResultSchema = z.object({
+  answer: z.string(),
+  sources: z.array(taskSchema),
   /** RAG-enabled note pages that informed the answer. */
-  noteSources?: { id: string; title: string; notebookId: string }[];
-}
+  noteSources: z
+    .array(z.object({ id: z.uuid(), title: z.string(), notebookId: z.uuid() }))
+    .optional(),
+});
+export type TaskAskResult = z.infer<typeof taskAskResultSchema>;
 
 /** Text used to embed a task for semantic search. */
 export function taskEmbeddingText(t: Pick<Task, 'title' | 'description' | 'assignee'>): string {

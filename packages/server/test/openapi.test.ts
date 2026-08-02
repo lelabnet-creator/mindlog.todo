@@ -79,4 +79,29 @@ describe('OpenAPI document', () => {
       '#/components/schemas/Task',
     );
   });
+
+  it('leaves no anonymous object nested inside a named schema', () => {
+    // Un objet imbriqué sans `$ref` est publié inline, et openapi-generator lui
+    // invente alors un nom tiré du chemin : `DashboardStatsTasksByPriority`,
+    // `DrawCleanupRequestShapesInner`. Le défaut est INVISIBLE dans le document
+    // — ces noms n'y figurent pas, ils naissent à la génération — et se
+    // découvrait jusqu'ici en lisant le Kotlin produit, une génération trop
+    // tard. Nommer le schéma dans le domaine ne suffit pas : il doit passer par
+    // `ref()` pour atterrir dans `components`.
+    const offenders: string[] = [];
+    const walk = (node: unknown, path: string): void => {
+      if (!node || typeof node !== 'object') return;
+      if (Array.isArray(node)) {
+        node.forEach((item, i) => walk(item, `${path}[${i}]`));
+        return;
+      }
+      const obj = node as Record<string, unknown>;
+      const nested = path.split('.').length > 2;
+      if (nested && obj.type === 'object' && obj.properties && !obj.$ref) offenders.push(path);
+      for (const [key, value] of Object.entries(obj)) walk(value, `${path}.${key}`);
+    };
+    for (const [name, schema] of Object.entries(v30.components.schemas!)) walk(schema, name);
+
+    expect(offenders).toEqual([]);
+  });
 });

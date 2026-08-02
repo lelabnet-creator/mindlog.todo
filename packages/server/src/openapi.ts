@@ -2,6 +2,9 @@ import {
   apiKeyCreateSchema,
   apiKeyCreatedSchema,
   apiKeySchema,
+  attachmentCreateSchema,
+  attachmentSchema,
+  storageUsageSchema,
   authTokensSchema,
   changeEventSchema,
   completeMindlogIdSchema,
@@ -214,6 +217,8 @@ function buildDocument(version: '3.1.0' | '3.0.3') {
   }));
   const User = ref('User', userSchema);
   const ApiKey = ref('ApiKey', apiKeySchema);
+  const Attachment = ref('Attachment', attachmentSchema);
+  const StorageUsage = ref('StorageUsage', storageUsageSchema);
   const ApiKeyCreated = ref('ApiKeyCreated', apiKeyCreatedSchema);
   // Composed from the named parts rather than passed straight through.
   // `.openapi()` metadata lives on a schema *instance*, and `authResultSchema`
@@ -240,6 +245,7 @@ function buildDocument(version: '3.1.0' | '3.0.3') {
   const ResetPassword = ref('ResetPasswordRequest', resetPasswordSchema);
   const CompleteMindlogId = ref('CompleteMindlogIdRequest', completeMindlogIdSchema);
   const ApiKeyCreate = ref('ApiKeyCreateRequest', apiKeyCreateSchema);
+  const AttachmentCreate = ref('AttachmentCreateRequest', attachmentCreateSchema);
   const ProfileUpdate = ref('ProfileUpdateRequest', profileUpdateSchema);
   const TaskCreate = ref('TaskCreateRequest', taskCreateSchema);
   const TaskUpdate = ref('TaskUpdateRequest', taskUpdateSchema);
@@ -767,6 +773,52 @@ function buildDocument(version: '3.1.0' | '3.0.3') {
     method: 'get', path: '/api/v1/dashboard', tags: ['stats'], security: secured,
     summary: 'Aggregated task and note counters, plus a 14-day completion trend',
     responses: { 200: { description: 'OK', ...json(DashboardStats) } },
+  });
+
+  // --- attachments, storage, export --------------------------------------
+
+  r.registerPath({
+    method: 'get', path: '/api/v1/tasks/{id}/attachments', tags: ['attachments'], security: secured,
+    summary: 'Attachments of a task, without their extracted text',
+    request: { params: id },
+    responses: { 200: { description: 'OK', ...json(z.array(Attachment)) }, 404: notFound },
+  });
+  r.registerPath({
+    method: 'post', path: '/api/v1/tasks/{id}/attachments', tags: ['attachments'], security: secured,
+    description:
+      'The extracted TEXT is what is stored — it feeds the task embedding. Binary files are ' +
+      'not uploaded here; the caller extracts their text first.',
+    request: { params: id, body: json(AttachmentCreate) },
+    responses: { 201: { description: 'Created', ...json(Attachment) }, 404: notFound },
+  });
+  r.registerPath({
+    method: 'get', path: '/api/v1/attachments/{id}', tags: ['attachments'], security: secured,
+    summary: 'One attachment, with its extracted text',
+    request: { params: id },
+    responses: { 200: { description: 'OK', ...json(Attachment) }, 404: notFound },
+  });
+  r.registerPath({
+    method: 'delete', path: '/api/v1/attachments/{id}', tags: ['attachments'], security: secured,
+    request: { params: id },
+    responses: { 204: { description: 'Deleted' } },
+  });
+
+  r.registerPath({
+    method: 'get', path: '/api/v1/storage', tags: ['account'], security: secured,
+    summary: 'Bytes held by notes and attachments, against the quota',
+    responses: { 200: { description: 'OK', ...json(StorageUsage) } },
+  });
+
+  r.registerPath({
+    method: 'get', path: '/api/v1/export', tags: ['account'], security: secured,
+    summary: 'Full JSON export of the account (backup / portability)',
+    description:
+      'Served as a download (`Content-Disposition`). The body aggregates every collection at ' +
+      'once and has no fixed schema — it grows with the product, and pinning its shape here ' +
+      'would freeze a backup format that is meant to stay exhaustive.',
+    responses: {
+      200: { description: 'OK', content: { 'application/json': { schema: z.object({}).passthrough() } } },
+    },
   });
 
   // --- events -----------------------------------------------------------

@@ -15,6 +15,8 @@ import {
   aiSettingsUpdateSchema,
   aiSettingsViewSchema,
   aiUsageSchema,
+  aiCreditsSchema,
+  chatProviderSchema,
   chatModelSchema,
   drawCleanupResultSchema,
   PROMPT_KEYS,
@@ -160,10 +162,21 @@ function buildDocument(version: '3.1.0' | '3.0.3') {
   const PromptView = ref('PromptView', promptViewSchema);
   const AiUsage = ref('AiUsage', aiUsageSchema);
   const AiLog = ref('AiLog', aiLogSchema);
-  const AiSettings = ref('AiSettings', aiSettingsViewSchema);
+  // Composé de parties NOMMÉES, pour la raison donnée plus haut sur AuthResult :
+  // passer les schémas bruts inline leurs formes dans le document, et les
+  // générateurs en tirent des `AiSettingsProvidersInner` et autres
+  // `AiSettingsCredits` que personne n'aurait choisi d'écrire.
+  const AiCredits = ref('AiCredits', aiCreditsSchema);
+  const ChatProvider = ref('ChatProvider', chatProviderSchema);
+  const ChatModel = ref('ChatModel', chatModelSchema);
+  const AiSettings = ref('AiSettings', aiSettingsViewSchema.extend({
+    providers: z.array(ChatProvider),
+    models: z.array(ChatModel),
+    credits: AiCredits.nullable(),
+  }));
   // Le retour de /ai/models est enveloppé : `{ models: [...] }`, pas un tableau
   // nu — la route pourra porter un jour la source ou la fraîcheur de la liste.
-  const AiModelList = ref('AiModelList', z.object({ models: z.array(ref('ChatModel', chatModelSchema)) }));
+  const AiModelList = ref('AiModelList', z.object({ models: z.array(ChatModel) }));
   const User = ref('User', userSchema);
   const ApiKey = ref('ApiKey', apiKeySchema);
   const ApiKeyCreated = ref('ApiKeyCreated', apiKeyCreatedSchema);

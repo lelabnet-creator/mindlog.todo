@@ -3,7 +3,7 @@ import pg from 'pg';
 /** Create the dedicated test database (idempotent) before any test runs. */
 export async function setup(): Promise<void> {
   const url = new URL(
-    process.env.DATABASE_URL ?? 'postgres://mindlog:mindlog@localhost:5439/mindlog_test',
+    process.env.DATABASE_URL ?? 'postgres://mindlog_todo:mindlog_todo@localhost:5432/mindlog_todo_test',
   );
   const testDb = url.pathname.slice(1);
   url.pathname = '/postgres'; // connect to the maintenance db to issue CREATE DATABASE

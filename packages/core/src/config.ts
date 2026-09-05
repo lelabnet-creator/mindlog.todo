@@ -72,7 +72,7 @@ export const config = {
   // built-in list (see corsOptions in rest/app.ts); the literal `*` restores the
   // previous allow-everything behaviour as an escape hatch.
   corsOrigins: env('CORS_ORIGINS', ''),
-  databaseUrl: env('DATABASE_URL', 'postgres://mindlog:mindlog@localhost:5432/mindlog'),
+  databaseUrl: env('DATABASE_URL', 'postgres://mindlog_todo:mindlog_todo@localhost:5432/mindlog_todo'),
   // Startup wait for Postgres. On host boot, Docker restarts containers WITHOUT
   // honouring compose's `depends_on: condition: service_healthy` (that only
   // applies to `docker compose up`), so the API can start before its database.

@@ -1,30 +1,34 @@
-services:
-  db:
-    image: pgvector/pgvector:pg16
-    environment:
-      POSTGRES_USER: mindlog
-      POSTGRES_PASSWORD: mindlog
-      POSTGRES_DB: mindlog
-    ports:
-      # Host port 5439 to avoid clashing with a local/other Postgres on 5432.
-      # Inside the compose network the API still connects to db:5432.
-      - "5439:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mindlog -d mindlog"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+# Module Todo — pile de developpement du depot applicatif, sur le poste.
+#
+# `name:` explicite, et il manquait (R7 de LeLab-infra) : le projet derive etait
+# `mindlogtodo`, et `mindlogtodo_default` est reference en `external: true` par
+# la passerelle. Le renommer sans precaution orphelinerait les volumes.
+#
+# ── La base a quitte cette pile le 2026-09-05 ─────────────────────────────
+# Elle vit dans le PostgreSQL COMMUN du poste, rejoint par `lelab-dev`. C'est
+# la suite logique de ce que l'override faisait deja a la main depuis des mois
+# — viser `mindlog-pg` du repertoire dev-db — mais sans le detour : plus de
+# service `db` mis sous profil pour l'empecher de demarrer, plus de reseau
+# `dev-db_default` a joindre. Un override qui existe pour contredire son
+# compose de base est un compose de base faux.
+#
+#   cd ../../../LeLab-infra && ./stacks/deploy.sh commun.infra.le-lab.net.app dev
+name: ${TDO_PROJECT:-tdo-web-local}
 
+services:
   api:
     build:
       context: .
       dockerfile: packages/server/Dockerfile
+    # `default` repris explicitement : nommer ses reseaux fait qu'un service ne
+    # rejoint plus que ceux-la, et l'API doit rester joignable par `web`.
+    networks: [default, lelab-dev]
     env_file: .env
     environment:
-      # Inside the compose network the db is reachable as `db`.
-      DATABASE_URL: postgres://mindlog:mindlog@db:5432/mindlog
+      # Le locataire `mindlog_todo_local` du cluster commun : une base par
+      # PILE, pour que celle-ci et `tdo-web-dev` ne se disputent pas les
+      # memes donnees (R3, troisieme exception).
+      DATABASE_URL: postgres://mindlog_todo:${PGPASS:?mot de passe du locataire requis - voir .env}@db:5432/mindlog_todo_local
       PORT: 8080
       # L'edge unifié sert le todo sous `/app` et retire ce préfixe : l'API, les
       # docs, /oauth et /.well-known sont donc tous exposés SOUS /app.
@@ -48,9 +52,6 @@ services:
       - ./certs/rootCA.pem:/etc/ssl/certs/mindlog-rootCA.pem:ro
     expose:
       - "8080"
-    depends_on:
-      db:
-        condition: service_healthy
     healthcheck:
       test:
         - CMD-SHELL
@@ -83,5 +84,7 @@ services:
       api:
         condition: service_healthy
 
-volumes:
-  pgdata:
+networks:
+  # Cree par la pile commune de LeLab-infra, rejoint ici.
+  lelab-dev:
+    external: true

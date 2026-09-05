@@ -6,7 +6,7 @@ import { defineConfig } from 'vitest/config';
 const TEST_ENV: Record<string, string> = {
   NODE_ENV: 'test',
   DATABASE_URL:
-    process.env.TEST_DATABASE_URL ?? 'postgres://mindlog:mindlog@localhost:5439/mindlog_test',
+    process.env.TEST_DATABASE_URL ?? 'postgres://mindlog_todo:mindlog_todo@localhost:5432/mindlog_todo_test',
   EMBEDDING_PROVIDER: 'fake',
   EMBEDDING_DIM: '64',
   JWT_SECRET: 'test-secret',

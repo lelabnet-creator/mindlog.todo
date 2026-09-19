@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
-    "@huggingface/transformers": "^4.2.0",
+    "@huggingface/transformers": "^4.3.0",
     "argon2": "^0.44.0",
     "chrono-i18n": "github:jacquesh82/chrono-i18n",
     "dotenv": "^16.4.5",
